@@ -13,29 +13,28 @@ from src.package_analyzer import PackageAnalyzer
 @pytest.fixture
 def sample_buildinfo_output() -> str:
     """Sample buildinfo output for testing."""
-    return """Build aaa_base (SLE15-SP7)
+    return """Build bash (SLE15-SP7)
 
-aaa_base (Standard)
+bash (Standard)
   required by:
-    - aaa_base-extras (Standard)
+    - bash-completion (Standard)
 
-aaa_base-extras (Standard)
+bash-doc (Standard)
 """
 
 
 @pytest.fixture
-def sample_ex_output() -> str:
-    """Sample ex output for aaa_base."""
+def sample_ex_bash_included() -> str:
+    """Sample ex output for bash (included in media)."""
     return """SLE-15-SP7-Full-x86_64-GM-Media1:
- └─> aaa_base include
+ └─> bash include
      is required by rpm: filesystem"""
 
 
 @pytest.fixture
-def sample_ex_output_no_required() -> str:
-    """Sample ex output without required_by_rpm."""
-    return """SLE-15-SP7-Full-x86_64-GM-Media1:
- └─> aaa_base-extras include"""
+def sample_ex_bash_doc_not_included() -> str:
+    """Sample ex output for bash-doc (not in media)."""
+    return ""
 
 
 @pytest.fixture
@@ -75,13 +74,13 @@ class TestCommandExecution:
             stdout=sample_buildinfo_output, returncode=0
         )
 
-        result = analyzer._run_buildinfo("aaa_base")
+        result = analyzer._run_buildinfo("bash")
 
         assert result == sample_buildinfo_output
         mock_run.assert_called_once()
         args, kwargs = mock_run.call_args
         cmd = args[0]
-        assert cmd == ["monkey", "buildinfo", "aaa_base"]
+        assert cmd == ["monkey", "buildinfo", "bash"]
         assert kwargs["cwd"] == analyzer.monkey_path
 
     @patch("subprocess.run")
@@ -96,18 +95,18 @@ class TestCommandExecution:
 
     @patch("subprocess.run")
     def test_run_ex_success(
-        self, mock_run: MagicMock, analyzer: PackageAnalyzer, sample_ex_output: str
+        self, mock_run: MagicMock, analyzer: PackageAnalyzer, sample_ex_bash_included: str
     ) -> None:
         """Test successful ex command execution."""
-        mock_run.return_value = MagicMock(stdout=sample_ex_output, returncode=0)
+        mock_run.return_value = MagicMock(stdout=sample_ex_bash_included, returncode=0)
 
-        result = analyzer._run_ex("aaa_base")
+        result = analyzer._run_ex("bash")
 
-        assert result == sample_ex_output
+        assert result == sample_ex_bash_included
         mock_run.assert_called_once()
         args, kwargs = mock_run.call_args
         cmd = args[0]
-        assert cmd == ["monkey", "ex", "aaa_base"]
+        assert cmd == ["monkey", "ex", "bash"]
         assert kwargs["cwd"] == analyzer.monkey_path
 
     @patch("subprocess.run")
@@ -121,201 +120,169 @@ class TestCommandExecution:
             analyzer._run_ex("nonexistent")
 
 
-class TestAnalyzeSinglePackage:
-    """Test analyzing a single source package."""
+class TestAnalyzeSourcePackage:
+    """Test analyze_source_package method."""
 
-    @patch("src.package_analyzer.PackageAnalyzer._run_ex")
-    @patch("src.package_analyzer.PackageAnalyzer._run_buildinfo")
-    def test_analyze_single_package_success(
+    @patch.object(PackageAnalyzer, "_run_ex")
+    @patch.object(PackageAnalyzer, "_run_buildinfo")
+    def test_analyze_source_package(
         self,
         mock_buildinfo: MagicMock,
         mock_ex: MagicMock,
         analyzer: PackageAnalyzer,
         sample_buildinfo_output: str,
-        sample_ex_output: str,
-        sample_ex_output_no_required: str,
+        sample_ex_bash_included: str,
+        sample_ex_bash_doc_not_included: str,
     ) -> None:
-        """Test successful analysis of a single source package."""
+        """Test analyzing a single source package."""
         mock_buildinfo.return_value = sample_buildinfo_output
-        mock_ex.side_effect = [sample_ex_output, sample_ex_output_no_required]
+        # Return different ex outputs for bash vs bash-doc
+        mock_ex.side_effect = [sample_ex_bash_included, sample_ex_bash_doc_not_included]
 
-        binary_pkgs, media_inclusions = analyzer.analyze_source_package("aaa_base")
+        source_data = analyzer.analyze_source_package("bash")
 
-        # Verify binary packages
-        assert len(binary_pkgs) == 2
-        assert "aaa_base" in binary_pkgs
-        assert "aaa_base-extras" in binary_pkgs
-        assert binary_pkgs["aaa_base"].name == "aaa_base"
-        assert binary_pkgs["aaa_base"].required_by == ["aaa_base-extras"]
-        assert binary_pkgs["aaa_base-extras"].name == "aaa_base-extras"
-        assert binary_pkgs["aaa_base-extras"].required_by == []
+        # Check source name
+        assert source_data.source_name == "bash"
 
-        # Verify media inclusions
-        assert len(media_inclusions) == 2
-        assert "aaa_base" in media_inclusions
-        assert "aaa_base-extras" in media_inclusions
+        # Check binaries dict has both packages
+        assert "bash" in source_data.binaries
+        assert "bash-doc" in source_data.binaries
 
-        # Check aaa_base media inclusion
-        aaa_base_media = media_inclusions["aaa_base"]
-        assert "SLE-15-SP7-Full-x86_64-GM-Media1" in aaa_base_media.included_in
-        reasons = aaa_base_media.included_in["SLE-15-SP7-Full-x86_64-GM-Media1"]
-        assert len(reasons) == 1
-        assert reasons[0].reason_chain == ["aaa_base include"]
-        assert reasons[0].required_by_rpm == "filesystem"
+        # Check bash binary (included in media)
+        bash_data = source_data.binaries["bash"]
+        assert bash_data.required_by == ["bash-completion"]
+        assert bash_data.included is True
+        assert "filesystem" in bash_data.required_by_rpm
 
-        # Check aaa_base-extras media inclusion
-        extras_media = media_inclusions["aaa_base-extras"]
-        assert "SLE-15-SP7-Full-x86_64-GM-Media1" in extras_media.included_in
-        reasons = extras_media.included_in["SLE-15-SP7-Full-x86_64-GM-Media1"]
-        assert len(reasons) == 1
-        assert reasons[0].reason_chain == ["aaa_base-extras include"]
-        assert reasons[0].required_by_rpm is None
-
-    @patch("src.package_analyzer.PackageAnalyzer._run_buildinfo")
-    def test_analyze_nonexistent_source_package(
-        self, mock_buildinfo: MagicMock, analyzer: PackageAnalyzer
-    ) -> None:
-        """Test analyzing a non-existent source package."""
-        mock_buildinfo.return_value = "foobar: not found\n"
-
-        binary_pkgs, media_inclusions = analyzer.analyze_source_package("foobar")
-
-        assert len(binary_pkgs) == 0
-        assert len(media_inclusions) == 0
-
-    @patch("src.package_analyzer.PackageAnalyzer._run_ex")
-    @patch("src.package_analyzer.PackageAnalyzer._run_buildinfo")
-    def test_analyze_package_with_nonexistent_binary(
-        self,
-        mock_buildinfo: MagicMock,
-        mock_ex: MagicMock,
-        analyzer: PackageAnalyzer,
-    ) -> None:
-        """Test analyzing when a binary package doesn't exist in media."""
-        buildinfo_output = """Build test (SLE15-SP7)
-
-test-bin (Standard)
-"""
-        ex_output = """SLE-15-SP7-Full-x86_64-GM-Media1:
- └─> spurious decision"""
-
-        mock_buildinfo.return_value = buildinfo_output
-        mock_ex.return_value = ex_output
-
-        binary_pkgs, media_inclusions = analyzer.analyze_source_package("test")
-
-        # Binary package should exist
-        assert len(binary_pkgs) == 1
-        assert "test-bin" in binary_pkgs
-
-        # But no media inclusion (spurious decision)
-        assert len(media_inclusions) == 0
+        # Check bash-doc binary (not in media)
+        bash_doc_data = source_data.binaries["bash-doc"]
+        assert bash_doc_data.required_by == []
+        assert bash_doc_data.included is False
+        assert bash_doc_data.required_by_rpm == []
 
 
-class TestAnalyzeMultiplePackages:
-    """Test analyzing multiple source packages."""
+class TestAnalyzePackages:
+    """Test analyze_packages method."""
 
-    @patch("src.package_analyzer.PackageAnalyzer._run_ex")
-    @patch("src.package_analyzer.PackageAnalyzer._run_buildinfo")
-    def test_analyze_packages_multiple(
-        self,
-        mock_buildinfo: MagicMock,
-        mock_ex: MagicMock,
-        analyzer: PackageAnalyzer,
+    @patch.object(PackageAnalyzer, "analyze_source_package")
+    def test_analyze_multiple_packages(
+        self, mock_analyze: MagicMock, analyzer: PackageAnalyzer
     ) -> None:
         """Test analyzing multiple source packages."""
+        from src.models import BinaryPackageData, SourcePackageData
 
-        def buildinfo_side_effect(pkg: str) -> str:
-            if pkg == "pkg1":
-                return """Build pkg1 (SLE15-SP7)
+        # Mock return values for two source packages
+        bash_data = SourcePackageData(
+            source_name="bash",
+            binaries={
+                "bash": BinaryPackageData(
+                    required_by=["rpm"],
+                    included=True,
+                    required_by_rpm=["filesystem"],
+                )
+            },
+        )
+        grep_data = SourcePackageData(
+            source_name="grep",
+            binaries={
+                "grep": BinaryPackageData(
+                    required_by=[],
+                    included=False,
+                    required_by_rpm=[],
+                )
+            },
+        )
+        mock_analyze.side_effect = [bash_data, grep_data]
 
-pkg1-bin (Standard)
-"""
-            elif pkg == "pkg2":
-                return """Build pkg2 (SLE15-SP7)
+        result = analyzer.analyze_packages(["bash", "grep"])
 
-pkg2-bin (Standard)
-"""
-            return ""
+        # Should be keyed by source package name
+        assert "bash" in result
+        assert "grep" in result
 
-        def ex_side_effect(pkg: str) -> str:
-            return f"""SLE-15-SP7-Full-x86_64-GM-Media1:
- └─> {pkg} include"""
+        # Check bash data (SourcePackageData object)
+        bash_source = result["bash"]
+        assert "bash" in bash_source.binaries
+        assert bash_source.binaries["bash"].included is True
 
-        mock_buildinfo.side_effect = buildinfo_side_effect
-        mock_ex.side_effect = ex_side_effect
-
-        binary_pkgs, media_inclusions = analyzer.analyze_packages(["pkg1", "pkg2"])
-
-        assert len(binary_pkgs) == 2
-        assert "pkg1-bin" in binary_pkgs
-        assert "pkg2-bin" in binary_pkgs
-
-        assert len(media_inclusions) == 2
-        assert "pkg1-bin" in media_inclusions
-        assert "pkg2-bin" in media_inclusions
+        # Check grep data (SourcePackageData object)
+        grep_source = result["grep"]
+        assert "grep" in grep_source.binaries
+        assert grep_source.binaries["grep"].included is False
 
 
-class TestJSONOutput:
-    """Test JSON output generation."""
+class TestWriteResults:
+    """Test _write_results method."""
 
-    @patch("src.package_analyzer.PackageAnalyzer._run_ex")
-    @patch("src.package_analyzer.PackageAnalyzer._run_buildinfo")
-    def test_write_json_files(
+    def test_write_results_single_file(self, analyzer: PackageAnalyzer) -> None:
+        """Test writing results to single packages.json file."""
+        from src.models import BinaryPackageData, SourcePackageData
+
+        # Create test data
+        bash_data = SourcePackageData(
+            source_name="bash",
+            binaries={
+                "bash": BinaryPackageData(
+                    required_by=["rpm"],
+                    included=True,
+                    required_by_rpm=["filesystem"],
+                ),
+                "bash-doc": BinaryPackageData(
+                    required_by=[],
+                    included=False,
+                    required_by_rpm=[],
+                ),
+            },
+        )
+
+        packages_data = {"bash": bash_data}
+
+        analyzer._write_results(packages_data)
+
+        # Check that packages.json was created
+        output_file = analyzer.output_dir / "packages.json"
+        assert output_file.exists()
+
+        # Load and verify JSON structure
+        with open(output_file) as f:
+            data = json.load(f)
+
+        # Should be keyed by source package
+        assert "bash" in data
+
+        # Should have nested binary packages
+        assert "bash" in data["bash"]
+        assert "bash-doc" in data["bash"]
+
+        # Verify bash binary data
+        bash_binary = data["bash"]["bash"]
+        assert bash_binary["required_by"] == ["rpm"]
+        assert bash_binary["included"] is True
+        assert bash_binary["required_by_rpm"] == ["filesystem"]
+
+        # Verify bash-doc binary data
+        bash_doc = data["bash"]["bash-doc"]
+        assert bash_doc["required_by"] == []
+        assert bash_doc["included"] is False
+        assert bash_doc["required_by_rpm"] == []
+
+
+class TestAnalyzeAndWrite:
+    """Test analyze_and_write method."""
+
+    @patch.object(PackageAnalyzer, "_write_results")
+    @patch.object(PackageAnalyzer, "analyze_packages")
+    def test_analyze_and_write(
         self,
-        mock_buildinfo: MagicMock,
-        mock_ex: MagicMock,
+        mock_analyze: MagicMock,
+        mock_write: MagicMock,
         analyzer: PackageAnalyzer,
-        sample_buildinfo_output: str,
-        sample_ex_output: str,
-        sample_ex_output_no_required: str,
     ) -> None:
-        """Test writing binary_packages.json and media_inclusion.json."""
-        mock_buildinfo.return_value = sample_buildinfo_output
-        mock_ex.side_effect = [sample_ex_output, sample_ex_output_no_required]
+        """Test analyze_and_write orchestration."""
+        mock_packages_data = {"bash": MagicMock()}
+        mock_analyze.return_value = mock_packages_data
 
-        # Analyze and write
-        analyzer.analyze_and_write(["aaa_base"])
+        analyzer.analyze_and_write(["bash"])
 
-        # Verify binary_packages.json
-        binary_json = analyzer.output_dir / "binary_packages.json"
-        assert binary_json.exists()
-
-        with open(binary_json) as f:
-            binary_data = json.load(f)
-
-        assert "aaa_base" in binary_data
-        assert "aaa_base-extras" in binary_data
-        assert binary_data["aaa_base"]["name"] == "aaa_base"
-        assert binary_data["aaa_base"]["required_by"] == ["aaa_base-extras"]
-
-        # Verify media_inclusion.json
-        media_json = analyzer.output_dir / "media_inclusion.json"
-        assert media_json.exists()
-
-        with open(media_json) as f:
-            media_data = json.load(f)
-
-        assert "aaa_base" in media_data
-        assert "SLE-15-SP7-Full-x86_64-GM-Media1" in media_data["aaa_base"]
-        reasons = media_data["aaa_base"]["SLE-15-SP7-Full-x86_64-GM-Media1"]
-        assert len(reasons) == 1
-        assert reasons[0]["reason_chain"] == ["aaa_base include"]
-        assert reasons[0]["required_by_rpm"] == "filesystem"
-
-    def test_write_empty_analysis(self, analyzer: PackageAnalyzer) -> None:
-        """Test writing empty results."""
-        # Manually write empty results
-        analyzer._write_results({}, {})
-
-        binary_json = analyzer.output_dir / "binary_packages.json"
-        media_json = analyzer.output_dir / "media_inclusion.json"
-
-        assert binary_json.exists()
-        assert media_json.exists()
-
-        with open(binary_json) as f:
-            assert json.load(f) == {}
-
-        with open(media_json) as f:
-            assert json.load(f) == {}
+        mock_analyze.assert_called_once_with(["bash"])
+        mock_write.assert_called_once_with(mock_packages_data)

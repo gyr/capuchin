@@ -4,7 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from src.models import BinaryPackage, MediaInclusion
+from src.models import BinaryPackageData, SourcePackageData
 from src.monkey_parser import MonkeyParser
 
 
@@ -80,95 +80,83 @@ class PackageAnalyzer:
                 f"Failed to run monkey ex for {binary_package}: {e}"
             ) from e
 
-    def analyze_source_package(
-        self, source_package: str
-    ) -> tuple[dict[str, BinaryPackage], dict[str, MediaInclusion]]:
+    def analyze_source_package(self, source_package: str) -> SourcePackageData:
         """Analyze a single source package.
 
         Args:
             source_package: Name of the source package to analyze.
 
         Returns:
-            Tuple of (binary_packages_dict, media_inclusions_dict).
+            SourcePackageData containing binaries with merged buildinfo and ex data.
         """
-        binary_pkgs: dict[str, BinaryPackage] = {}
-        media_inclusions: dict[str, MediaInclusion] = {}
+        binaries: dict[str, BinaryPackageData] = {}
 
         # Get binary packages from buildinfo
         buildinfo_output = self._run_buildinfo(source_package)
         binary_packages = self.parser.parse_buildinfo(buildinfo_output)
 
-        # For each binary package, get media inclusion info
+        # For each binary package, merge buildinfo and ex data
         for binary_pkg in binary_packages:
-            binary_pkgs[binary_pkg.name] = binary_pkg
-
-            # Get media inclusion
+            # Get media inclusion info
             ex_output = self._run_ex(binary_pkg.name)
-            inclusion_dict = self.parser.parse_ex(ex_output)
+            included, required_by_rpm = self.parser.parse_ex(ex_output)
 
-            # Only add media inclusion if package is actually included
-            if inclusion_dict:
-                media_inclusions[binary_pkg.name] = MediaInclusion(
-                    binary_package=binary_pkg.name,
-                    included_in=inclusion_dict,
-                )
+            # Create merged BinaryPackageData
+            binaries[binary_pkg.name] = BinaryPackageData(
+                required_by=binary_pkg.required_by,
+                included=included,
+                required_by_rpm=required_by_rpm,
+            )
 
-        return binary_pkgs, media_inclusions
+        return SourcePackageData(
+            source_name=source_package,
+            binaries=binaries,
+        )
 
     def analyze_packages(
         self, source_packages: list[str]
-    ) -> tuple[dict[str, BinaryPackage], dict[str, MediaInclusion]]:
+    ) -> dict[str, SourcePackageData]:
         """Analyze multiple source packages.
 
         Args:
             source_packages: List of source package names to analyze.
 
         Returns:
-            Tuple of (binary_packages_dict, media_inclusions_dict).
+            Dictionary mapping source package names to SourcePackageData.
         """
-        all_binary_pkgs: dict[str, BinaryPackage] = {}
-        all_media_inclusions: dict[str, MediaInclusion] = {}
+        packages_data: dict[str, SourcePackageData] = {}
 
         for source_pkg in source_packages:
-            binary_pkgs, media_inclusions = self.analyze_source_package(
-                source_pkg
-            )
-            all_binary_pkgs.update(binary_pkgs)
-            all_media_inclusions.update(media_inclusions)
+            source_data = self.analyze_source_package(source_pkg)
+            packages_data[source_pkg] = source_data
 
-        return all_binary_pkgs, all_media_inclusions
+        return packages_data
 
     def _write_results(
         self,
-        binary_pkgs: dict[str, BinaryPackage],
-        media_inclusions: dict[str, MediaInclusion],
+        packages_data: dict[str, SourcePackageData],
     ) -> None:
-        """Write analysis results to JSON files.
+        """Write analysis results to single packages.json file.
 
         Args:
-            binary_pkgs: Dictionary of binary packages.
-            media_inclusions: Dictionary of media inclusions.
+            packages_data: Dictionary of source package data.
         """
-        # Write binary_packages.json
-        binary_json_path = self.output_dir / "binary_packages.json"
-        with open(binary_json_path, "w") as f:
-            binary_data = {name: pkg.to_dict() for name, pkg in binary_pkgs.items()}
-            json.dump(binary_data, f, indent=2)
+        output_path = self.output_dir / "packages.json"
 
-        # Write media_inclusion.json
-        media_json_path = self.output_dir / "media_inclusion.json"
-        with open(media_json_path, "w") as f:
-            media_data = {
-                name: inclusion.to_dict()
-                for name, inclusion in media_inclusions.items()
-            }
-            json.dump(media_data, f, indent=2)
+        # Build JSON structure: {source_name: {binary_name: binary_data}}
+        output_dict = {
+            source_name: source_data.to_dict()
+            for source_name, source_data in packages_data.items()
+        }
+
+        with open(output_path, "w") as f:
+            json.dump(output_dict, f, indent=2)
 
     def analyze_and_write(self, source_packages: list[str]) -> None:
-        """Analyze source packages and write results to JSON files.
+        """Analyze source packages and write results to JSON file.
 
         Args:
             source_packages: List of source package names to analyze.
         """
-        binary_pkgs, media_inclusions = self.analyze_packages(source_packages)
-        self._write_results(binary_pkgs, media_inclusions)
+        packages_data = self.analyze_packages(source_packages)
+        self._write_results(packages_data)
