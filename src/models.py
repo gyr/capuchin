@@ -1,7 +1,6 @@
 """Data models for Package Analyzer."""
 
 from dataclasses import asdict, dataclass
-from typing import Optional
 
 
 @dataclass
@@ -29,9 +28,7 @@ class SourcePackage:
 
     def to_dict(self) -> dict[str, object]:
         """Convert to dictionary for JSON serialization."""
-        return {
-            "binary_packages": [pkg.to_dict() for pkg in self.binary_packages]
-        }
+        return {"binary_packages": [pkg.to_dict() for pkg in self.binary_packages]}
 
 
 @dataclass
@@ -39,7 +36,7 @@ class InclusionReason:
     """Represents one inclusion path in media."""
 
     reason_chain: list[str]  # Chain of reasons (tree path)
-    required_by_rpm: Optional[str]  # If included due to rpm dependency
+    required_by_rpm: str | None  # If included due to rpm dependency
 
     def to_dict(self) -> dict[str, object]:
         """Convert to dictionary for JSON serialization."""

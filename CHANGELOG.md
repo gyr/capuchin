@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### TODO
+- Fix SIM117 linting warnings (combine nested with statements in tests/test_config.py)
+
 ### Added
 - Initial project setup with Python 3.12 and uv
 - Configuration module with environment variable support (PACKAGE_MONKEY_PATH)

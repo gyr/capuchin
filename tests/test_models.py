@@ -1,7 +1,5 @@
 """Tests for data models."""
 
-import pytest
-
 from src.models import (
     BinaryPackage,
     BinaryPackageInfo,
@@ -125,9 +123,7 @@ class TestMediaInclusion:
     def test_creation(self) -> None:
         """Test creating MediaInclusion."""
         reason = InclusionReason(reason_chain=["include"], required_by_rpm=None)
-        inclusion = MediaInclusion(
-            binary_package="fwts", included_in={"sles_16.1": [reason]}
-        )
+        inclusion = MediaInclusion(binary_package="fwts", included_in={"sles_16.1": [reason]})
         assert inclusion.binary_package == "fwts"
         assert "sles_16.1" in inclusion.included_in
         assert len(inclusion.included_in["sles_16.1"]) == 1
@@ -217,18 +213,14 @@ class TestQueryResult:
             required_by_packages=[],
             media_inclusions={"sles_16.1": [reason]},
         )
-        result = QueryResult(
-            source_package="test-source", found=True, binary_packages=[info]
-        )
+        result = QueryResult(source_package="test-source", found=True, binary_packages=[info])
         assert result.source_package == "test-source"
         assert result.found is True
         assert len(result.binary_packages) == 1
 
     def test_creation_not_found(self) -> None:
         """Test creating QueryResult for not found package."""
-        result = QueryResult(
-            source_package="nonexistent", found=False, binary_packages=[]
-        )
+        result = QueryResult(source_package="nonexistent", found=False, binary_packages=[])
         assert result.source_package == "nonexistent"
         assert result.found is False
         assert result.binary_packages == []
@@ -249,9 +241,7 @@ class TestQueryResult:
             required_by_packages=[],
             media_inclusions={"sles_16.1": [reason]},
         )
-        query_result = QueryResult(
-            source_package="test-source", found=True, binary_packages=[info]
-        )
+        query_result = QueryResult(source_package="test-source", found=True, binary_packages=[info])
         result = query_result.to_dict()
         assert result["source_package"] == "test-source"
         assert result["found"] is True
