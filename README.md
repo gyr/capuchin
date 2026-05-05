@@ -141,9 +141,7 @@ analyze-packages source_packages.json --monkey-path /custom/path/to/monkey
 **What it does:**
 - Reads source package names from the JSON file (must be a JSON array of strings)
 - Executes `monkey buildinfo` and `monkey ex` commands for each package
-- Generates two JSON files in the output directory:
-  - `binary_packages.json`: Binary packages with reverse dependencies
-  - `media_inclusion.json`: Media inclusion information
+- Generates a single `packages.json` file in the output directory with all package data
 
 **Example source_packages.json:**
 ```json
@@ -152,33 +150,45 @@ analyze-packages source_packages.json --monkey-path /custom/path/to/monkey
 
 ### 2. Query Package Information
 
-Query information about a specific source package:
+Query information about a package (source or binary):
 
 ```bash
-query-package <source_package_name>
+query-package <package_name>
 ```
 
-**Example:**
+The query tool searches first as a source package, then as a binary package across all sources.
+
+**Example - querying a source package:**
 ```bash
-query-package gettext-runtime
+query-package bash
 ```
 
 **Output:**
 ```
-Source Package: gettext-runtime
-Binary Packages: 2
+Source package: bash
+Binary packages:
+  - bash
+      required_by: ['bash-completion', 'rpm']
+      included: True
+      required_by_rpm: ['filesystem']
+  - bash-doc
+      required_by: []
+      included: False
+      required_by_rpm: []
+```
 
-1. gettext-runtime
-   Required by: (none)
-   Media inclusion: Not in media
+**Example - querying a binary package:**
+```bash
+query-package envsubst
+```
 
-2. gettext-tools
-   Required by:
-     - fontconfig-devel
-     - intltool
-   Media inclusion:
-     SLE-15-SP7-Full-x86_64-GM-Media1:
-       - Required by RPM: fontconfig-devel
+**Output:**
+```
+Binary package: envsubst
+Source package: gettext-runtime
+  required_by: ['gettext-runtime']
+  included: False
+  required_by_rpm: []
 ```
 
 **JSON output:**
@@ -188,69 +198,48 @@ query-package fwts --json | jq .
 
 ## Output Format
 
-The tool generates two JSON files with simplified data focused on essential package information.
+The tool generates a single `packages.json` file with all package data organized by source package.
 
-### binary_packages.json
+### packages.json
 
-Maps binary package names to their reverse dependencies:
+Hierarchical structure: source package → binary packages → package data
 
 ```json
 {
-  "aaa_base": {
-    "name": "aaa_base",
-    "required_by": ["aaa_base-extras"]
-  },
-  "aaa_base-extras": {
-    "name": "aaa_base-extras",
-    "required_by": []
-  },
   "bash": {
-    "name": "bash",
-    "required_by": ["bash-completion", "bash-doc"]
+    "bash": {
+      "required_by": ["bash-completion", "rpm"],
+      "included": true,
+      "required_by_rpm": ["filesystem"]
+    },
+    "bash-doc": {
+      "required_by": [],
+      "included": false,
+      "required_by_rpm": []
+    }
+  },
+  "gettext-runtime": {
+    "gettext-runtime": {
+      "required_by": ["gettext-tools", "grub2-common"],
+      "included": true,
+      "required_by_rpm": ["glibc", "systemd"]
+    },
+    "envsubst": {
+      "required_by": ["gettext-runtime"],
+      "included": false,
+      "required_by_rpm": []
+    }
   }
 }
 ```
 
-**Fields:**
-- `name`: Binary package name
-- `required_by`: List of package names that require this package (reverse dependencies)
-
-### media_inclusion.json
-
-Maps binary package names to their media inclusion information:
-
-```json
-{
-  "aaa_base": {
-    "SLE-15-SP7-Full-x86_64-GM-Media1": [
-      {
-        "reason_chain": ["aaa_base include"],
-        "required_by_rpm": "filesystem"
-      }
-    ]
-  },
-  "bash": {
-    "SLE-15-SP7-Full-x86_64-GM-Media1": [
-      {
-        "reason_chain": ["bash include"],
-        "required_by_rpm": null
-      }
-    ],
-    "SLE-15-SP7-Full-aarch64-GM-Media1": [
-      {
-        "reason_chain": ["bash include"],
-        "required_by_rpm": null
-      }
-    ]
-  }
-}
-```
-
-**Fields:**
-- Top-level key: Binary package name
-- Second-level key: Media name (e.g., `SLE-15-SP7-Full-x86_64-GM-Media1`)
-- `reason_chain`: List with the inclusion reason (typically `["<package-name> include"]`)
-- `required_by_rpm`: Package that requires this binary package (if applicable), or `null`
+**Structure:**
+- **Top level**: Source package names (keys match input source_packages.json)
+- **Second level**: Binary package names produced by each source
+- **Binary package fields:**
+  - `required_by`: List of package names that depend on this binary (reverse dependencies)
+  - `included`: Boolean indicating if package appears in any media
+  - `required_by_rpm`: List of RPM packages requiring this binary in media (empty if not included or no requirements)
 
 ## Troubleshooting
 
