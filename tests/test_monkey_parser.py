@@ -88,73 +88,64 @@ class TestMonkeyParser:
     def test_parse_ex_simple(
         self, parser: MonkeyParser, fixtures_dir: Path
     ) -> None:
-        """Test parsing simple ex output."""
+        """Test parsing simple ex output with multiple media."""
         ex_output = (fixtures_dir / "ex_simple.txt").read_text()
-        media_dict = parser.parse_ex(ex_output)
+        included, required_by_rpm = parser.parse_ex(ex_output)
 
-        assert len(media_dict) == 2
-        assert "sles_16.1" in media_dict
-        assert "sleha_16.1" in media_dict
-
-        # Check sles_16.1 inclusion (has required_by_rpm)
-        sles_reasons = media_dict["sles_16.1"]
-        assert len(sles_reasons) == 1
-        reason1 = sles_reasons[0]
-        assert reason1.required_by_rpm == "fontconfig-devel"
-        # We only care about the include statement, not the propagation details
-        assert "gettext-tools include" in reason1.reason_chain[0]
-
-        # Check sleha_16.1 inclusion (no required_by_rpm)
-        sleha_reasons = media_dict["sleha_16.1"]
-        assert len(sleha_reasons) == 1
-        reason2 = sleha_reasons[0]
-        assert reason2.required_by_rpm is None
-        assert "gettext-tools include" in reason2.reason_chain[0]
+        # Package is in media (sles_16.1 and sleha_16.1)
+        assert included is True
+        # Should collect required_by_rpm from sles_16.1 (fontconfig-devel)
+        # sleha_16.1 has no required_by_rpm so only one value
+        assert "fontconfig-devel" in required_by_rpm
 
     def test_parse_ex_multiple_paths(
         self, parser: MonkeyParser, fixtures_dir: Path
     ) -> None:
         """Test parsing ex output with package that has required_by_rpm."""
         ex_output = (fixtures_dir / "ex_multiple_paths.txt").read_text()
-        media_dict = parser.parse_ex(ex_output)
+        included, required_by_rpm = parser.parse_ex(ex_output)
 
-        assert len(media_dict) == 1
-        assert "sles_16.1" in media_dict
-
-        reasons = media_dict["sles_16.1"]
-        assert len(reasons) == 1
-
+        # Package is in media
+        assert included is True
         # Should extract the required_by_rpm from the tree
-        reason = reasons[0]
-        assert reason.required_by_rpm == "qa_test_fwts"
-        assert "fwts include" in reason.reason_chain[0]
+        assert "qa_test_fwts" in required_by_rpm
+        assert len(required_by_rpm) == 1
 
     def test_parse_ex_not_in_media(
         self, parser: MonkeyParser, fixtures_dir: Path
     ) -> None:
         """Test parsing empty ex output (package not in media)."""
         ex_output = (fixtures_dir / "ex_not_in_media.txt").read_text()
-        media_dict = parser.parse_ex(ex_output)
-        assert media_dict == {}
+        included, required_by_rpm = parser.parse_ex(ex_output)
+
+        # Package is NOT in any media
+        assert included is False
+        assert required_by_rpm == []
 
     def test_parse_ex_empty_string(self, parser: MonkeyParser) -> None:
-        """Test parsing empty string returns empty dict."""
-        media_dict = parser.parse_ex("")
-        assert media_dict == {}
+        """Test parsing empty string returns not included."""
+        included, required_by_rpm = parser.parse_ex("")
+
+        assert included is False
+        assert required_by_rpm == []
 
     def test_parse_ex_whitespace_only(self, parser: MonkeyParser) -> None:
-        """Test parsing whitespace-only string returns empty dict."""
-        media_dict = parser.parse_ex("   \n  \n  ")
-        assert media_dict == {}
+        """Test parsing whitespace-only string returns not included."""
+        included, required_by_rpm = parser.parse_ex("   \n  \n  ")
+
+        assert included is False
+        assert required_by_rpm == []
 
     def test_parse_ex_spurious_decision(
         self, parser: MonkeyParser, fixtures_dir: Path
     ) -> None:
         """Test parsing ex output with spurious decision (non-existent package)."""
         ex_output = (fixtures_dir / "ex_spurious.txt").read_text()
-        media_dict = parser.parse_ex(ex_output)
-        # Should return empty dict - spurious decision means not actually included
-        assert media_dict == {}
+        included, required_by_rpm = parser.parse_ex(ex_output)
+
+        # Spurious decision means not actually included
+        assert included is False
+        assert required_by_rpm == []
 
     def test_parse_buildinfo_multiple_packages(
         self, parser: MonkeyParser

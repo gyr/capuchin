@@ -1,15 +1,20 @@
 """Parser for monkey command outputs."""
 
 import re
-from typing import Any
-
-from src.models import BinaryPackage, InclusionReason
+from typing import Any, NamedTuple
 
 
 class ParseError(Exception):
     """Raised when parsing fails."""
 
     pass
+
+
+class BinaryPackage(NamedTuple):
+    """Temporary structure for parse_buildinfo results."""
+
+    name: str
+    required_by: list[str]
 
 
 class MonkeyParser:
@@ -101,72 +106,41 @@ class MonkeyParser:
             required_by=pkg_dict.get("required_by", []),
         )
 
-    def parse_ex(self, output: str) -> dict[str, list[InclusionReason]]:
-        """Parse monkey ex output into media inclusion dictionary.
+    def parse_ex(self, output: str) -> tuple[bool, list[str]]:
+        """Parse monkey ex output into simplified media inclusion data.
 
-        Extracts two key pieces of information:
-        1. Which media the package is included in
-        2. If included, which package requires it (from "is required by rpm:" line)
+        Extracts:
+        1. Whether package is included in any media (boolean)
+        2. All RPMs that require this package across all media (list of strings)
 
         Args:
             output: Raw output from 'monkey ex' command.
 
         Returns:
-            Dictionary mapping media names to lists of InclusionReason objects.
-            Each media has one InclusionReason with the package name and
-            optional required_by_rpm.
+            Tuple of (included: bool, required_by_rpm: list[str])
+            - included: True if package appears in any media
+            - required_by_rpm: List of all RPMs requiring this package (may be empty)
         """
         if not output.strip():
-            return {}
+            return (False, [])
 
-        media_dict: dict[str, list[InclusionReason]] = {}
         lines = output.strip().split("\n")
-
-        current_media: str | None = None
-        package_name: str | None = None
-        required_by_rpm: str | None = None
+        found_in_media = False
+        required_by_rpm_set: set[str] = set()
 
         for line in lines:
-            # Media header (ends with colon, no tree chars)
-            if line.endswith(":") and not self._has_tree_chars(line):
-                # Save previous media if exists
-                if current_media and package_name:
-                    media_dict[current_media] = [
-                        InclusionReason(
-                            reason_chain=[package_name],
-                            required_by_rpm=required_by_rpm,
-                        )
-                    ]
-
-                # Start new media
-                current_media = line.rstrip(":")
-                package_name = None
-                required_by_rpm = None
-                continue
-
-            # Extract package name from "└─> package-name include" line
-            # Ignore "spurious decision" (non-existent binary package)
+            # Check for package inclusion (ignore spurious decisions)
             if "include" in line and "└─>" in line and "spurious decision" not in line:
-                content = self._strip_tree_chars(line).strip()
-                if content:
-                    package_name = content
+                found_in_media = True
 
             # Extract required_by_rpm from "is required by rpm: package-name" line
             if "is required by rpm:" in line:
                 match = re.search(r"is required by rpm:\s+(.+)", line)
                 if match:
-                    required_by_rpm = match.group(1).strip()
+                    rpm_name = match.group(1).strip()
+                    required_by_rpm_set.add(rpm_name)
 
-        # Don't forget the last media
-        if current_media and package_name:
-            media_dict[current_media] = [
-                InclusionReason(
-                    reason_chain=[package_name],
-                    required_by_rpm=required_by_rpm,
-                )
-            ]
-
-        return media_dict
+        return (found_in_media, sorted(required_by_rpm_set))
 
     def _has_tree_chars(self, line: str) -> bool:
         """Check if line contains tree drawing characters."""
