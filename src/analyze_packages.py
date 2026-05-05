@@ -19,7 +19,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         Parsed arguments namespace.
     """
     parser = argparse.ArgumentParser(
-        description="Analyze source packages and generate binary package data."
+        description="Analyze source packages and generate packages.json output file."
     )
 
     parser.add_argument(
@@ -31,7 +31,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         "--output-dir",
         type=Path,
         default=Path.cwd(),
-        help="Directory to write output JSON files (default: current directory)",
+        help="Directory to write packages.json file (default: current directory)",
     )
 
     parser.add_argument(
@@ -88,7 +88,8 @@ def main() -> int:
         )
         analyzer.analyze_and_write(source_packages)
 
-        print(f"Analysis complete. Results written to {args.output_dir}")
+        output_file = args.output_dir / "packages.json"
+        print(f"Analysis complete. Results written to {output_file}")
         return 0
 
     except ValueError as e:
