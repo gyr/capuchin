@@ -55,11 +55,13 @@ class PackageAnalyzer:
     def _run_ex(self, binary_package: str) -> str:
         """Execute monkey ex command.
 
+        Note: monkey ex outputs to stderr, not stdout.
+
         Args:
             binary_package: Name of the binary package.
 
         Returns:
-            Raw command output.
+            Raw command output from stderr.
 
         Raises:
             RuntimeError: If command execution fails.
@@ -74,7 +76,7 @@ class PackageAnalyzer:
                 check=True,
                 cwd=self.monkey_path,
             )
-            return result.stdout
+            return result.stderr
         except subprocess.CalledProcessError as e:
             raise RuntimeError(
                 f"Failed to run monkey ex for {binary_package}: {e}"

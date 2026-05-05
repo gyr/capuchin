@@ -97,8 +97,10 @@ class TestCommandExecution:
     def test_run_ex_success(
         self, mock_run: MagicMock, analyzer: PackageAnalyzer, sample_ex_bash_included: str
     ) -> None:
-        """Test successful ex command execution."""
-        mock_run.return_value = MagicMock(stdout=sample_ex_bash_included, returncode=0)
+        """Test successful ex command execution (monkey ex outputs to stderr)."""
+        mock_run.return_value = MagicMock(
+            stdout="", stderr=sample_ex_bash_included, returncode=0
+        )
 
         result = analyzer._run_ex("bash")
 
