@@ -1,0 +1,12 @@
+[
+  "bash",
+  "coreutils",
+  "gcc",
+  "git",
+  "glibc",
+  "kernel-default",
+  "openssl",
+  "python3",
+  "systemd",
+  "vim"
+]

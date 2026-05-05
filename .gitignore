@@ -31,6 +31,9 @@ htmlcov/
 .env
 output/
 
+# User-specific source packages list (use source_packages.example.json as template)
+source_packages.json
+
 # Build artifacts
 build/
 dist/

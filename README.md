@@ -14,8 +14,49 @@ A Python tool to analyze source packages and their binary dependencies using the
 
 - Python 3.12 or higher
 - [uv](https://github.com/astral-sh/uv) package manager
-- `monkey` CLI tool (package_monkey)
+- `monkey` CLI tool (package_monkey) - **must be pre-configured**
 - `jq` (for JSON validation)
+
+### Prerequisites Setup
+
+#### 1. package_monkey (monkey CLI tool)
+
+The `monkey` CLI tool must be installed and configured before using this analyzer.
+
+**Installation**: Refer to the package_monkey documentation for installation instructions.
+
+**Configuration**:  
+Once installed, set the `PACKAGE_MONKEY_PATH` environment variable to point to your package_monkey directory (see Configuration section below).
+
+**Verification**:
+```bash
+# Navigate to your package_monkey directory
+cd /path/to/package_monkey
+
+# Verify monkey command works
+./monkey --help
+```
+
+#### 2. jq (JSON processor)
+
+Required for JSON validation and sorting.
+
+**Installation**:
+```bash
+# On openSUSE/SUSE
+zypper install jq
+
+# On Ubuntu/Debian
+apt-get install jq
+
+# On macOS
+brew install jq
+```
+
+**Verification**:
+```bash
+jq --version
+```
 
 ## Installation
 
