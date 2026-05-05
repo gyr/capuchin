@@ -4,8 +4,9 @@ A Python tool to analyze source packages and their binary dependencies using the
 
 ## Features
 
-- **Binary Package Analysis**: Extract all binary packages produced by source packages and their reverse dependencies
-- **Media Inclusion Tracking**: Determine which binary packages are included in media (products like sles_16.1, sleha_16.1) and why
+- **Binary Package Analysis**: Extract binary packages from source packages with reverse dependency tracking
+- **Media Inclusion Tracking**: Determine which media includes each binary package and whether it's required by another package
+- **Simplified Data Model**: Focus on essential information (package names, dependencies, media inclusion) - no metadata like versions, architectures, or epic classifications
 - **Query Tool**: Interactive query interface to explore package information
 - **JSON Output**: Structured JSON output for downstream processing
 
@@ -124,22 +125,19 @@ query-package gettext-runtime
 **Output:**
 ```
 Source Package: gettext-runtime
-Binary Packages: 8
+Binary Packages: 2
 
-1. gettext-runtime-32bit (CoreLocalization-32bit) v0.22.5
-   Architectures: x86_64
+1. gettext-runtime
    Required by: (none)
    Media inclusion: Not in media
 
-2. gettext-tools (CoreLocalization-api) v0.22.5
-   Architectures: x86_64, s390x, ppc64le, aarch64
+2. gettext-tools
    Required by:
-     - fontconfig-devel (CoreX11-api)
-     - intltool (Internationalization-api)
+     - fontconfig-devel
+     - intltool
    Media inclusion:
-     sles_16.1:
-       - Required by: fontconfig-devel
-         Reason: propagated from epic: CoreX11 → set by policy: epic:CoreX11
+     SLE-15-SP7-Full-x86_64-GM-Media1:
+       - Required by RPM: fontconfig-devel
 ```
 
 **JSON output:**
@@ -149,45 +147,69 @@ query-package fwts --json | jq .
 
 ## Output Format
 
+The tool generates two JSON files with simplified data focused on essential package information.
+
 ### binary_packages.json
+
+Maps binary package names to their reverse dependencies:
 
 ```json
 {
-  "source_package_name": {
-    "binary_packages": [
-      {
-        "name": "binary-package-name",
-        "purpose": "Epic-classification",
-        "version": "1.2.3",
-        "architectures": ["x86_64", "aarch64"],
-        "summary": "Package description",
-        "required_by": [
-          {"package": "other-package", "purpose": "OtherEpic-classification"}
-        ]
-      }
-    ]
+  "aaa_base": {
+    "name": "aaa_base",
+    "required_by": ["aaa_base-extras"]
+  },
+  "aaa_base-extras": {
+    "name": "aaa_base-extras",
+    "required_by": []
+  },
+  "bash": {
+    "name": "bash",
+    "required_by": ["bash-completion", "bash-doc"]
   }
 }
 ```
+
+**Fields:**
+- `name`: Binary package name
+- `required_by`: List of package names that require this package (reverse dependencies)
 
 ### media_inclusion.json
 
+Maps binary package names to their media inclusion information:
+
 ```json
 {
-  "binary_package_name": {
-    "media_name": [
+  "aaa_base": {
+    "SLE-15-SP7-Full-x86_64-GM-Media1": [
       {
-        "reason_chain": [
-          "include",
-          "propagated from epic: EpicName",
-          "set by policy: policy:name"
-        ],
-        "required_by_rpm": "package-that-requires-this"
+        "reason_chain": ["aaa_base include"],
+        "required_by_rpm": "filesystem"
+      }
+    ]
+  },
+  "bash": {
+    "SLE-15-SP7-Full-x86_64-GM-Media1": [
+      {
+        "reason_chain": ["bash include"],
+        "required_by_rpm": null
+      }
+    ],
+    "SLE-15-SP7-Full-aarch64-GM-Media1": [
+      {
+        "reason_chain": ["bash include"],
+        "required_by_rpm": null
       }
     ]
   }
 }
 ```
+
+**Fields:**
+- Top-level key: Binary package name
+- Second-level key: Media name (e.g., `SLE-15-SP7-Full-x86_64-GM-Media1`)
+- `reason_chain`: List with the inclusion reason (typically `["<package-name> include"]`)
+- `required_by_rpm`: Package that requires this binary package (if applicable), or `null`
 
 ## Troubleshooting
 

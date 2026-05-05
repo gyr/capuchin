@@ -62,14 +62,18 @@ The Package Analyzer is designed to extract and analyze package dependency infor
 **Purpose**: Data models for type safety and serialization
 
 **Models**:
-- `BinaryPackage`: Represents a binary package with metadata
+- `BinaryPackage`: Represents a binary package with name and reverse dependencies
 - `SourcePackage`: Groups binary packages from same source
-- `InclusionReason`: Represents one inclusion path in media
+- `InclusionReason`: Represents one inclusion path in media (reason chain + optional required_by_rpm)
 - `MediaInclusion`: Maps media to inclusion reasons
 - `BinaryPackageInfo`: Extended info for query results
 - `QueryResult`: Result of querying a source package
 
 **Design Decision**: Use dataclasses for simplicity and built-in features (type hints, repr, equality)
+
+**Simplified Data Model**: Focus on essential information only:
+- Binary package names and reverse dependencies (no version, architecture, summary, epic)
+- Media inclusion and required_by_rpm (no propagation chains or policy details)
 
 ### src/monkey_parser.py
 
@@ -83,37 +87,42 @@ The Package Analyzer is designed to extract and analyze package dependency infor
 
 #### buildinfo Parser
 ```
-Build source_package (N rpms)
-binary_package_1 (Epic-classification)
-  version: X.Y.Z
-  architectures: arch1 arch2
-  summary: Description
+Build source_package (SLE15-SP7)
+binary_package_1 (Purpose)
   required by:
-    - package1 (Epic1)
-    - package2 (Epic2)
-binary_package_2 (...)
+    - package1 (Purpose1)
+    - package2 (Purpose2)
+binary_package_2 (Purpose)
   ...
 ```
 
+**Extracts (simplified)**:
+- Binary package names
+- List of "required by" package names (just names, ignores purpose/epic)
+- **Ignores**: version, architectures, summary, epic classifications
+
+**Strategy**:
 - Split by package blocks (identified by indentation)
-- Extract metadata fields line-by-line
-- Parse "required by" list
+- Extract package name from header line
+- Parse "required by" list, extracting only package names
 
 #### ex Parser
 ```
 media_name:
   └─> binary_package include
-      ├─> is required by rpm: other_package
-      │   └─> propagated from epic: EpicName
-      │       └─> set by policy: policy:name
-      └─> propagated from epic: OtherEpic
-          └─> set by policy: policy:name
+      is required by rpm: other_package
 ```
 
-- Parse tree structure (└─>, ├─>, │)
-- Each branch represents one inclusion path
-- Extract "is required by rpm:" from lines
-- Build reason chains from indented lines
+**Extracts (simplified)**:
+- Which media the package is included in
+- Optional "required_by_rpm" value if present
+- **Ignores**: propagation chains, policy details, complex reason trees
+
+**Strategy**:
+- Identify media sections (lines ending with colon)
+- Extract package name from "└─> package-name include" line
+- Extract required_by_rpm from "is required by rpm:" line if present
+- Ignore "spurious decision" (non-existent packages)
 
 ### src/package_analyzer.py
 
@@ -198,6 +207,27 @@ source_packages.json
 ```
 
 ## Design Decisions
+
+### Simplified Data Model
+
+**Decision**: Extract only essential information, ignore metadata
+
+**Rationale**:
+- Focus on what's needed: binary names, dependencies, media inclusion
+- Simpler JSON structure, easier to process
+- Faster parsing (skip unnecessary fields)
+- Reduced storage requirements
+
+**What we extract**:
+- Binary package names
+- Reverse dependencies (just package names)
+- Media inclusion (which media, required_by_rpm)
+
+**What we ignore**:
+- Version numbers, architectures, summaries
+- Epic classifications and purpose fields
+- Complex propagation chains and policy details
+- Reason tree hierarchies
 
 ### Why Two JSON Files?
 
