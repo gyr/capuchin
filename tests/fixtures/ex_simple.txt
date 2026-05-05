@@ -1,0 +1,10 @@
+sles_16.1:
+  └─> gettext-tools include
+      └─> is required by rpm: fontconfig-devel
+          └─> propagated from epic: CoreX11
+              └─> set by policy: epic:CoreX11
+
+sleha_16.1:
+  └─> gettext-tools include
+      └─> propagated from epic: CoreLocalization
+          └─> set by policy: epic:CoreLocalization

@@ -1,0 +1,20 @@
+Build gettext-runtime (3 rpms)
+gettext-runtime (CoreLocalization)
+  version: 0.22.5
+  architectures: x86_64 aarch64 ppc64le s390x
+  summary: GNU Libraries and Utilities for Internationalization
+  required by:
+
+gettext-runtime-32bit (CoreLocalization-32bit)
+  version: 0.22.5
+  architectures: x86_64
+  summary: GNU Libraries and Utilities for Internationalization
+  required by:
+
+gettext-tools (CoreLocalization-api)
+  version: 0.22.5
+  architectures: x86_64 aarch64 ppc64le s390x
+  summary: Tools for Native Language Support (NLS)
+  required by:
+    - fontconfig-devel (CoreX11-api)
+    - intltool (Internationalization-api)

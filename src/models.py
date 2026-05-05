@@ -8,11 +8,7 @@ class BinaryPackage:
     """Represents a binary package."""
 
     name: str
-    purpose: str  # e.g., "KernelPlus-default"
-    version: str
-    architectures: list[str]
-    summary: str
-    required_by: list[dict[str, str]]  # List of {"package": "name", "purpose": "Epic"}
+    required_by: list[str]  # List of package names that require this package
 
     def to_dict(self) -> dict[str, object]:
         """Convert to dictionary for JSON serialization."""

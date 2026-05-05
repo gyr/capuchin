@@ -17,37 +17,22 @@ class TestBinaryPackage:
         """Test creating a BinaryPackage."""
         pkg = BinaryPackage(
             name="fwts",
-            purpose="KernelPlus-default",
-            version="25.03.00",
-            architectures=["x86_64", "aarch64"],
-            summary="Firmware Test Suite",
-            required_by=[],
+            required_by=["qa_test_fwts", "validation-tools"],
         )
         assert pkg.name == "fwts"
-        assert pkg.purpose == "KernelPlus-default"
-        assert pkg.version == "25.03.00"
-        assert pkg.architectures == ["x86_64", "aarch64"]
-        assert pkg.summary == "Firmware Test Suite"
-        assert pkg.required_by == []
+        assert len(pkg.required_by) == 2
+        assert pkg.required_by == ["qa_test_fwts", "validation-tools"]
 
     def test_to_dict(self) -> None:
         """Test converting BinaryPackage to dictionary."""
         pkg = BinaryPackage(
             name="test-pkg",
-            purpose="Test-default",
-            version="1.0.0",
-            architectures=["x86_64"],
-            summary="Test package",
-            required_by=[{"package": "other-pkg", "purpose": "Other-default"}],
+            required_by=["other-pkg"],
         )
         result = pkg.to_dict()
         assert result["name"] == "test-pkg"
-        assert result["purpose"] == "Test-default"
-        assert result["version"] == "1.0.0"
-        assert result["architectures"] == ["x86_64"]
-        assert result["summary"] == "Test package"
         assert len(result["required_by"]) == 1
-        assert result["required_by"][0]["package"] == "other-pkg"
+        assert result["required_by"][0] == "other-pkg"
 
 
 class TestSourcePackage:
@@ -55,14 +40,7 @@ class TestSourcePackage:
 
     def test_creation(self) -> None:
         """Test creating a SourcePackage."""
-        binary = BinaryPackage(
-            name="test",
-            purpose="Test-default",
-            version="1.0",
-            architectures=["x86_64"],
-            summary="Test",
-            required_by=[],
-        )
+        binary = BinaryPackage(name="test", required_by=[])
         source = SourcePackage(name="test-source", binary_packages=[binary])
         assert source.name == "test-source"
         assert len(source.binary_packages) == 1
@@ -70,51 +48,44 @@ class TestSourcePackage:
 
     def test_to_dict(self) -> None:
         """Test converting SourcePackage to dictionary."""
-        binary = BinaryPackage(
-            name="test",
-            purpose="Test-default",
-            version="1.0",
-            architectures=["x86_64"],
-            summary="Test",
-            required_by=[],
-        )
+        binary = BinaryPackage(name="test", required_by=["other-pkg"])
         source = SourcePackage(name="test-source", binary_packages=[binary])
         result = source.to_dict()
         assert "binary_packages" in result
         assert len(result["binary_packages"]) == 1
         assert result["binary_packages"][0]["name"] == "test"
+        assert result["binary_packages"][0]["required_by"] == ["other-pkg"]
 
 
 class TestInclusionReason:
     """Tests for InclusionReason model."""
 
     def test_creation_without_rpm(self) -> None:
-        """Test creating InclusionReason without rpm dependency."""
+        """Test creating InclusionReason without required_by_rpm."""
         reason = InclusionReason(
-            reason_chain=["include", "propagated from epic: KernelPlus"],
+            reason_chain=["fwts include"],
             required_by_rpm=None,
         )
-        assert len(reason.reason_chain) == 2
+        assert reason.reason_chain == ["fwts include"]
         assert reason.required_by_rpm is None
 
     def test_creation_with_rpm(self) -> None:
-        """Test creating InclusionReason with rpm dependency."""
+        """Test creating InclusionReason with required_by_rpm."""
         reason = InclusionReason(
-            reason_chain=["include", "is required by rpm: libMagickWand"],
-            required_by_rpm="libMagickWand",
+            reason_chain=["libopenjph0_25 include"],
+            required_by_rpm="libMagickWand-7_Q16HDRI10",
         )
-        assert len(reason.reason_chain) == 2
-        assert reason.required_by_rpm == "libMagickWand"
+        assert reason.required_by_rpm == "libMagickWand-7_Q16HDRI10"
 
     def test_to_dict(self) -> None:
         """Test converting InclusionReason to dictionary."""
         reason = InclusionReason(
-            reason_chain=["include", "propagated from epic: Test"],
-            required_by_rpm="test-rpm",
+            reason_chain=["fwts include"],
+            required_by_rpm="qa_test_fwts",
         )
         result = reason.to_dict()
-        assert result["reason_chain"] == ["include", "propagated from epic: Test"]
-        assert result["required_by_rpm"] == "test-rpm"
+        assert result["reason_chain"] == ["fwts include"]
+        assert result["required_by_rpm"] == "qa_test_fwts"
 
 
 class TestMediaInclusion:
@@ -122,7 +93,7 @@ class TestMediaInclusion:
 
     def test_creation(self) -> None:
         """Test creating MediaInclusion."""
-        reason = InclusionReason(reason_chain=["include"], required_by_rpm=None)
+        reason = InclusionReason(reason_chain=["fwts include"], required_by_rpm=None)
         inclusion = MediaInclusion(binary_package="fwts", included_in={"sles_16.1": [reason]})
         assert inclusion.binary_package == "fwts"
         assert "sles_16.1" in inclusion.included_in
@@ -130,21 +101,12 @@ class TestMediaInclusion:
 
     def test_to_dict(self) -> None:
         """Test converting MediaInclusion to dictionary."""
-        reason1 = InclusionReason(reason_chain=["include"], required_by_rpm=None)
-        reason2 = InclusionReason(
-            reason_chain=["include", "is required by rpm: other"],
-            required_by_rpm="other",
-        )
-        inclusion = MediaInclusion(
-            binary_package="test-pkg",
-            included_in={"sles_16.1": [reason1], "sleha_16.1": [reason2]},
-        )
+        reason = InclusionReason(reason_chain=["fwts include"], required_by_rpm=None)
+        inclusion = MediaInclusion(binary_package="fwts", included_in={"sles_16.1": [reason]})
         result = inclusion.to_dict()
         assert "sles_16.1" in result
-        assert "sleha_16.1" in result
         assert len(result["sles_16.1"]) == 1
-        assert len(result["sleha_16.1"]) == 1
-        assert result["sleha_16.1"][0]["required_by_rpm"] == "other"
+        assert result["sles_16.1"][0]["reason_chain"] == ["fwts include"]
 
 
 class TestBinaryPackageInfo:
@@ -152,46 +114,32 @@ class TestBinaryPackageInfo:
 
     def test_creation(self) -> None:
         """Test creating BinaryPackageInfo."""
-        binary = BinaryPackage(
-            name="test",
-            purpose="Test-default",
-            version="1.0",
-            architectures=["x86_64"],
-            summary="Test",
-            required_by=[],
-        )
-        reason = InclusionReason(reason_chain=["include"], required_by_rpm=None)
+        pkg = BinaryPackage(name="fwts", required_by=["qa_test_fwts"])
+        reason = InclusionReason(reason_chain=["fwts include"], required_by_rpm=None)
         info = BinaryPackageInfo(
-            binary_package=binary,
-            required_by_packages=["pkg1", "pkg2"],
+            binary_package=pkg,
+            required_by_packages=["qa_test_fwts"],
             media_inclusions={"sles_16.1": [reason]},
         )
-        assert info.binary_package.name == "test"
-        assert len(info.required_by_packages) == 2
+        assert info.binary_package.name == "fwts"
+        assert len(info.required_by_packages) == 1
         assert "sles_16.1" in info.media_inclusions
 
     def test_to_dict(self) -> None:
         """Test converting BinaryPackageInfo to dictionary."""
-        binary = BinaryPackage(
-            name="test",
-            purpose="Test-default",
-            version="1.0",
-            architectures=["x86_64"],
-            summary="Test",
-            required_by=[],
-        )
-        reason = InclusionReason(reason_chain=["include"], required_by_rpm=None)
+        pkg = BinaryPackage(name="fwts", required_by=["qa_test_fwts"])
+        reason = InclusionReason(reason_chain=["fwts include"], required_by_rpm=None)
         info = BinaryPackageInfo(
-            binary_package=binary,
-            required_by_packages=["pkg1"],
+            binary_package=pkg,
+            required_by_packages=["qa_test_fwts"],
             media_inclusions={"sles_16.1": [reason]},
         )
         result = info.to_dict()
-        assert "binary_package" in result
-        assert "required_by_packages" in result
-        assert "media_inclusions" in result
-        assert result["binary_package"]["name"] == "test"
-        assert result["required_by_packages"] == ["pkg1"]
+        assert result["binary_package"]["name"] == "fwts"
+        assert result["binary_package"]["required_by"] == ["qa_test_fwts"]
+        assert result["required_by_packages"] == ["qa_test_fwts"]
+        assert len(result["media_inclusions"]) == 1
+        assert "sles_16.1" in result["media_inclusions"]
 
 
 class TestQueryResult:
@@ -199,18 +147,11 @@ class TestQueryResult:
 
     def test_creation_found(self) -> None:
         """Test creating QueryResult for found package."""
-        binary = BinaryPackage(
-            name="test",
-            purpose="Test-default",
-            version="1.0",
-            architectures=["x86_64"],
-            summary="Test",
-            required_by=[],
-        )
-        reason = InclusionReason(reason_chain=["include"], required_by_rpm=None)
+        pkg = BinaryPackage(name="fwts", required_by=["qa_test_fwts"])
+        reason = InclusionReason(reason_chain=["fwts include"], required_by_rpm=None)
         info = BinaryPackageInfo(
-            binary_package=binary,
-            required_by_packages=[],
+            binary_package=pkg,
+            required_by_packages=["qa_test_fwts"],
             media_inclusions={"sles_16.1": [reason]},
         )
         result = QueryResult(source_package="test-source", found=True, binary_packages=[info])
@@ -227,18 +168,11 @@ class TestQueryResult:
 
     def test_to_dict(self) -> None:
         """Test converting QueryResult to dictionary."""
-        binary = BinaryPackage(
-            name="test",
-            purpose="Test-default",
-            version="1.0",
-            architectures=["x86_64"],
-            summary="Test",
-            required_by=[],
-        )
-        reason = InclusionReason(reason_chain=["include"], required_by_rpm=None)
+        pkg = BinaryPackage(name="fwts", required_by=["qa_test_fwts"])
+        reason = InclusionReason(reason_chain=["fwts include"], required_by_rpm=None)
         info = BinaryPackageInfo(
-            binary_package=binary,
-            required_by_packages=[],
+            binary_package=pkg,
+            required_by_packages=["qa_test_fwts"],
             media_inclusions={"sles_16.1": [reason]},
         )
         query_result = QueryResult(source_package="test-source", found=True, binary_packages=[info])

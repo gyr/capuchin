@@ -1,0 +1,14 @@
+Build fwts (2 rpms)
+fwts (KernelPlus-default)
+  version: 24.01.00
+  architectures: x86_64 aarch64
+  summary: Firmware Test Suite
+  required by:
+    - qa_test_fwts (QA-tests)
+    - validation-tools (QA-tools)
+
+fwts-devel (KernelPlus-api)
+  version: 24.01.00
+  architectures: x86_64 aarch64
+  summary: Development files for FWTS
+  required by:

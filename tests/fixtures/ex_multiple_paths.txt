@@ -1,0 +1,7 @@
+sles_16.1:
+  └─> fwts include
+      ├─> is required by rpm: qa_test_fwts
+      │   └─> propagated from epic: QA
+      │       └─> set by policy: epic:QA
+      └─> propagated from epic: KernelPlus
+          └─> set by policy: epic:KernelPlus

@@ -1,0 +1,8 @@
+sles_16.1:
+  └─> barfoo: spurious decision
+
+sleha_16.1:
+  └─> barfoo: spurious decision
+
+sles_sap_16.1:
+  └─> barfoo: spurious decision
