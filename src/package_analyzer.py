@@ -36,11 +36,7 @@ class PackageAnalyzer:
         Raises:
             RuntimeError: If command execution fails.
         """
-        cmd = [
-            str(Path(self.monkey_path) / "monkey"),
-            "buildinfo",
-            source_package,
-        ]
+        cmd = ["monkey", "buildinfo", source_package]
 
         try:
             result = subprocess.run(
@@ -68,11 +64,7 @@ class PackageAnalyzer:
         Raises:
             RuntimeError: If command execution fails.
         """
-        cmd = [
-            str(Path(self.monkey_path) / "monkey"),
-            "ex",
-            binary_package,
-        ]
+        cmd = ["monkey", "ex", binary_package]
 
         try:
             result = subprocess.run(

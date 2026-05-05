@@ -79,10 +79,10 @@ class TestCommandExecution:
 
         assert result == sample_buildinfo_output
         mock_run.assert_called_once()
-        args = mock_run.call_args[0][0]
-        assert args[0].endswith("monkey")
-        assert "buildinfo" in args
-        assert "aaa_base" in args
+        args, kwargs = mock_run.call_args
+        cmd = args[0]
+        assert cmd == ["monkey", "buildinfo", "aaa_base"]
+        assert kwargs["cwd"] == analyzer.monkey_path
 
     @patch("subprocess.run")
     def test_run_buildinfo_command_failure(
@@ -105,10 +105,10 @@ class TestCommandExecution:
 
         assert result == sample_ex_output
         mock_run.assert_called_once()
-        args = mock_run.call_args[0][0]
-        assert args[0].endswith("monkey")
-        assert "ex" in args
-        assert "aaa_base" in args
+        args, kwargs = mock_run.call_args
+        cmd = args[0]
+        assert cmd == ["monkey", "ex", "aaa_base"]
+        assert kwargs["cwd"] == analyzer.monkey_path
 
     @patch("subprocess.run")
     def test_run_ex_command_failure(
