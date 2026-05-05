@@ -5,8 +5,6 @@ import json
 import sys
 from pathlib import Path
 
-from src.models import BinaryPackage, BinaryPackageInfo, InclusionReason, QueryResult
-
 
 def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments.
@@ -18,22 +16,19 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         Parsed arguments namespace.
     """
     parser = argparse.ArgumentParser(
-        description="Query package information from analysis results."
+        description="Query package information from packages.json."
     )
 
     parser.add_argument(
-        "source_package",
-        help="Source package name to query",
+        "package_name",
+        help="Package name to query (source or binary package)",
     )
 
     parser.add_argument(
         "--data-dir",
         type=Path,
         default=Path.cwd(),
-        help=(
-            "Directory containing binary_packages.json and media_inclusion.json "
-            "(default: current directory)"
-        ),
+        help="Directory containing packages.json (default: current directory)",
     )
 
     parser.add_argument(
@@ -45,154 +40,101 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(args)
 
 
-def load_data(
-    data_dir: Path,
-) -> tuple[dict[str, dict[str, object]], dict[str, dict[str, list[dict[str, object]]]]]:
-    """Load binary packages and media inclusion data from JSON files.
+def load_packages(data_dir: Path) -> dict[str, dict[str, dict[str, object]]]:
+    """Load packages data from packages.json.
 
     Args:
-        data_dir: Directory containing the JSON files.
+        data_dir: Directory containing packages.json.
 
     Returns:
-        Tuple of (binary_packages_dict, media_inclusion_dict).
+        Dictionary mapping source packages to their binaries.
 
     Raises:
-        FileNotFoundError: If required JSON files are missing.
-        json.JSONDecodeError: If JSON files are invalid.
+        FileNotFoundError: If packages.json is missing.
     """
-    binary_file = data_dir / "binary_packages.json"
-    media_file = data_dir / "media_inclusion.json"
+    packages_file = data_dir / "packages.json"
 
-    if not binary_file.exists():
-        raise FileNotFoundError(f"binary_packages.json not found in {data_dir}")
+    if not packages_file.exists():
+        raise FileNotFoundError(f"packages.json not found in {data_dir}")
 
-    if not media_file.exists():
-        raise FileNotFoundError(f"media_inclusion.json not found in {data_dir}")
-
-    with open(binary_file) as f:
-        binary_packages = json.load(f)
-
-    with open(media_file) as f:
-        media_inclusion = json.load(f)
-
-    return binary_packages, media_inclusion
+    with open(packages_file) as f:
+        return json.load(f)
 
 
-def query_source_package(
-    source_package: str,
-    binary_packages: dict[str, dict[str, object]],
-    media_inclusion: dict[str, dict[str, list[dict[str, object]]]],
-) -> QueryResult:
-    """Query information about a source package.
+def query_package(
+    package_name: str, packages_data: dict[str, dict[str, dict[str, object]]]
+) -> dict[str, object]:
+    """Query for a package by name.
+
+    Searches first as a source package, then as a binary package across all sources.
 
     Args:
-        source_package: Name of the source package to query.
-        binary_packages: Dictionary of binary packages.
-        media_inclusion: Dictionary of media inclusion information.
+        package_name: Name of package to find.
+        packages_data: Loaded packages data.
 
     Returns:
-        QueryResult with package information.
+        Dictionary with query result:
+        - type: "source" | "binary" | "not_found"
+        - Additional fields depending on type
     """
-    # Find all binary packages that match the source package name prefix
-    matching_binaries = []
+    # Try to find as source package first
+    if package_name in packages_data:
+        return {
+            "type": "source",
+            "source_package": package_name,
+            "binaries": packages_data[package_name],
+        }
 
-    for pkg_name, pkg_data in binary_packages.items():
-        # Match if package name starts with source package name
-        # This handles cases like "bash" matching "bash", "bash-completion", etc.
-        if pkg_name.startswith(source_package):
-            # Type assertions for JSON data
-            pkg_name_str = str(pkg_data["name"])
-            required_by_list = pkg_data.get("required_by", [])
-            assert isinstance(required_by_list, list)
-            required_by_typed = [str(pkg) for pkg in required_by_list]
+    # Search across all sources for binary package
+    for source_name, binaries in packages_data.items():
+        if package_name in binaries:
+            return {
+                "type": "binary",
+                "binary_package": package_name,
+                "source_package": source_name,
+                "data": binaries[package_name],
+            }
 
-            binary_pkg = BinaryPackage(
-                name=pkg_name_str,
-                required_by=required_by_typed,
-            )
-
-            # Get media inclusion for this binary package
-            media_inclusions: dict[str, list[InclusionReason]] = {}
-            if pkg_name in media_inclusion:
-                for media_name, reasons_data in media_inclusion[pkg_name].items():
-                    reasons = []
-                    for r in reasons_data:
-                        # Type assertions for JSON data
-                        reason_chain_data = r["reason_chain"]
-                        assert isinstance(reason_chain_data, list)
-                        reason_chain = [str(item) for item in reason_chain_data]
-
-                        required_by_rpm_data = r.get("required_by_rpm")
-                        required_by_rpm = (
-                            str(required_by_rpm_data) if required_by_rpm_data else None
-                        )
-
-                        reasons.append(
-                            InclusionReason(
-                                reason_chain=reason_chain,
-                                required_by_rpm=required_by_rpm,
-                            )
-                        )
-                    media_inclusions[media_name] = reasons
-
-            pkg_info = BinaryPackageInfo(
-                binary_package=binary_pkg,
-                required_by_packages=binary_pkg.required_by,
-                media_inclusions=media_inclusions,
-            )
-            matching_binaries.append(pkg_info)
-
-    return QueryResult(
-        source_package=source_package,
-        found=len(matching_binaries) > 0,
-        binary_packages=matching_binaries,
-    )
+    # Not found
+    return {
+        "type": "not_found",
+        "package_name": package_name,
+    }
 
 
-def format_text_output(result: QueryResult) -> str:
+def format_human_readable(query_result: dict[str, object]) -> str:
     """Format query result as human-readable text.
 
     Args:
-        result: Query result to format.
+        query_result: Result from query_package().
 
     Returns:
-        Formatted text output.
+        Formatted string.
     """
-    lines = []
-    lines.append(f"Source package: {result.source_package}")
+    result_type = query_result["type"]
 
-    if not result.found:
-        lines.append("No binary packages found for this source package.")
+    if result_type == "source":
+        lines = [f"Source package: {query_result['source_package']}"]
+        lines.append("Binary packages:")
+        binaries = query_result["binaries"]
+        for binary_name, binary_data in binaries.items():  # type: ignore
+            lines.append(f"  - {binary_name}")
+            lines.append(f"      required_by: {binary_data['required_by']}")  # type: ignore
+            lines.append(f"      included: {binary_data['included']}")  # type: ignore
+            lines.append(f"      required_by_rpm: {binary_data['required_by_rpm']}")  # type: ignore
         return "\n".join(lines)
 
-    lines.append(f"Binary packages: {len(result.binary_packages)}")
-    lines.append("")
+    elif result_type == "binary":
+        lines = [f"Binary package: {query_result['binary_package']}"]
+        lines.append(f"Source package: {query_result['source_package']}")
+        data = query_result["data"]
+        lines.append(f"  required_by: {data['required_by']}")  # type: ignore
+        lines.append(f"  included: {data['included']}")  # type: ignore
+        lines.append(f"  required_by_rpm: {data['required_by_rpm']}")  # type: ignore
+        return "\n".join(lines)
 
-    for idx, pkg_info in enumerate(result.binary_packages, 1):
-        lines.append(f"{idx}. {pkg_info.binary_package.name}")
-
-        # Required by
-        if pkg_info.required_by_packages:
-            lines.append(f"   Required by: {', '.join(pkg_info.required_by_packages)}")
-        else:
-            lines.append("   Required by: (none)")
-
-        # Media inclusion
-        if pkg_info.media_inclusions:
-            lines.append("   Media inclusion:")
-            for media_name, reasons in pkg_info.media_inclusions.items():
-                lines.append(f"     {media_name}:")
-                for reason in reasons:
-                    if reason.required_by_rpm:
-                        lines.append(f"       - Required by RPM: {reason.required_by_rpm}")
-                    else:
-                        lines.append("       - Included (no RPM dependency)")
-        else:
-            lines.append("   Media inclusion: Not in media")
-
-        lines.append("")
-
-    return "\n".join(lines)
+    else:  # not_found
+        return f"Package not found: {query_result['package_name']}"
 
 
 def main() -> int:
@@ -204,27 +146,26 @@ def main() -> int:
     args = parse_args()
 
     try:
-        # Load data
-        binary_packages, media_inclusion = load_data(args.data_dir)
+        # Load packages data
+        packages_data = load_packages(args.data_dir)
 
-        # Query source package
-        result = query_source_package(
-            args.source_package, binary_packages, media_inclusion
-        )
+        # Query for the package
+        result = query_package(args.package_name, packages_data)
 
-        # Output results
+        # Output result
         if args.json:
-            print(json.dumps(result.to_dict(), indent=2))
+            print(json.dumps(result, indent=2))
         else:
-            print(format_text_output(result))
+            print(format_human_readable(result))
 
-        return 0
+        # Exit with success unless package not found
+        return 0 if result["type"] != "not_found" else 1
 
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
     except json.JSONDecodeError as e:
-        print(f"Error: Failed to parse JSON file: {e}", file=sys.stderr)
+        print(f"Error: Failed to parse packages.json: {e}", file=sys.stderr)
         return 1
     except Exception as e:
         print(f"Unexpected error: {e}", file=sys.stderr)

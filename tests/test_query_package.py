@@ -1,13 +1,13 @@
 """Tests for query_package CLI."""
 
 import json
-import sys
 from pathlib import Path
-from unittest.mock import patch
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.query_package import main, parse_args
+from src.query_package import format_human_readable, load_packages, main, parse_args, query_package
 
 
 class TestParseArgs:
@@ -15,258 +15,268 @@ class TestParseArgs:
 
     def test_parse_args_defaults(self) -> None:
         """Test parsing with default arguments."""
-        args = parse_args(["aaa_base"])
-        assert args.source_package == "aaa_base"
+        args = parse_args(["bash"])
+        assert args.package_name == "bash"
         assert args.data_dir == Path.cwd()
         assert args.json is False
 
     def test_parse_args_with_data_dir(self, tmp_path: Path) -> None:
         """Test parsing with custom data directory."""
         args = parse_args(["bash", "--data-dir", str(tmp_path)])
-        assert args.source_package == "bash"
+        assert args.package_name == "bash"
         assert args.data_dir == tmp_path
-        assert args.json is False
 
     def test_parse_args_with_json_flag(self) -> None:
         """Test parsing with JSON output flag."""
-        args = parse_args(["coreutils", "--json"])
-        assert args.source_package == "coreutils"
-        assert args.data_dir == Path.cwd()
+        args = parse_args(["bash", "--json"])
+        assert args.package_name == "bash"
         assert args.json is True
 
-    def test_parse_args_with_all_options(self, tmp_path: Path) -> None:
-        """Test parsing with all options specified."""
-        args = parse_args(["fwts", "--data-dir", str(tmp_path), "--json"])
-        assert args.source_package == "fwts"
-        assert args.data_dir == tmp_path
-        assert args.json is True
+
+class TestLoadPackages:
+    """Test load_packages function."""
+
+    @pytest.fixture
+    def sample_packages_file(self, tmp_path: Path) -> Path:
+        """Create a sample packages.json file."""
+        packages_file = tmp_path / "packages.json"
+        data = {
+            "bash": {
+                "bash": {
+                    "required_by": ["bash-completion"],
+                    "included": True,
+                    "required_by_rpm": ["filesystem"],
+                },
+                "bash-doc": {
+                    "required_by": [],
+                    "included": False,
+                    "required_by_rpm": [],
+                },
+            },
+            "grep": {
+                "grep": {
+                    "required_by": [],
+                    "included": False,
+                    "required_by_rpm": [],
+                }
+            },
+        }
+        with open(packages_file, "w") as f:
+            json.dump(data, f)
+        return packages_file
+
+    def test_load_packages_success(self, sample_packages_file: Path, tmp_path: Path) -> None:
+        """Test successfully loading packages.json."""
+        packages = load_packages(tmp_path)
+
+        assert "bash" in packages
+        assert "grep" in packages
+        assert "bash" in packages["bash"]
+        assert "bash-doc" in packages["bash"]
+
+    def test_load_packages_file_not_found(self, tmp_path: Path) -> None:
+        """Test loading when packages.json doesn't exist."""
+        with pytest.raises(FileNotFoundError, match="packages.json not found"):
+            load_packages(tmp_path)
+
+
+class TestQueryPackage:
+    """Test query_package function."""
+
+    @pytest.fixture
+    def sample_data(self) -> dict[str, dict[str, dict[str, object]]]:
+        """Sample packages data."""
+        return {
+            "bash": {
+                "bash": {
+                    "required_by": ["bash-completion", "rpm"],
+                    "included": True,
+                    "required_by_rpm": ["filesystem"],
+                },
+                "bash-doc": {
+                    "required_by": [],
+                    "included": False,
+                    "required_by_rpm": [],
+                },
+            },
+            "gettext-runtime": {
+                "gettext-runtime": {
+                    "required_by": ["gettext-tools"],
+                    "included": True,
+                    "required_by_rpm": ["glibc"],
+                },
+                "envsubst": {
+                    "required_by": ["gettext-runtime"],
+                    "included": False,
+                    "required_by_rpm": [],
+                },
+            },
+        }
+
+    def test_query_by_source_package(self, sample_data: dict) -> None:
+        """Test querying by source package name."""
+        result = query_package("bash", sample_data)
+
+        assert result["type"] == "source"
+        assert result["source_package"] == "bash"
+        assert "bash" in result["binaries"]
+        assert "bash-doc" in result["binaries"]
+
+    def test_query_by_binary_package(self, sample_data: dict) -> None:
+        """Test querying by binary package name (not same as source)."""
+        result = query_package("envsubst", sample_data)
+
+        assert result["type"] == "binary"
+        assert result["source_package"] == "gettext-runtime"
+        assert result["binary_package"] == "envsubst"
+        assert result["data"]["required_by"] == ["gettext-runtime"]
+        assert result["data"]["included"] is False
+
+    def test_query_not_found(self, sample_data: dict) -> None:
+        """Test querying for non-existent package."""
+        result = query_package("nonexistent", sample_data)
+
+        assert result["type"] == "not_found"
+        assert result["package_name"] == "nonexistent"
+
+
+class TestFormatHumanReadable:
+    """Test format_human_readable function."""
+
+    def test_format_source_package(self) -> None:
+        """Test formatting source package result."""
+        query_result = {
+            "type": "source",
+            "source_package": "bash",
+            "binaries": {
+                "bash": {
+                    "required_by": ["rpm"],
+                    "included": True,
+                    "required_by_rpm": ["filesystem"],
+                },
+                "bash-doc": {
+                    "required_by": [],
+                    "included": False,
+                    "required_by_rpm": [],
+                },
+            },
+        }
+
+        output = format_human_readable(query_result)
+
+        assert "Source package: bash" in output
+        assert "Binary packages:" in output
+        assert "bash" in output
+        assert "required_by: ['rpm']" in output or 'required_by: ["rpm"]' in output
+        assert "included: True" in output
+        assert "bash-doc" in output
+        assert "included: False" in output
+
+    def test_format_binary_package(self) -> None:
+        """Test formatting binary package result."""
+        query_result = {
+            "type": "binary",
+            "binary_package": "envsubst",
+            "source_package": "gettext-runtime",
+            "data": {
+                "required_by": ["gettext-runtime"],
+                "included": False,
+                "required_by_rpm": [],
+            },
+        }
+
+        output = format_human_readable(query_result)
+
+        assert "Binary package: envsubst" in output
+        assert "Source package: gettext-runtime" in output
+        assert "required_by:" in output
+        assert "included: False" in output
+
+    def test_format_not_found(self) -> None:
+        """Test formatting not found result."""
+        query_result = {
+            "type": "not_found",
+            "package_name": "nonexistent",
+        }
+
+        output = format_human_readable(query_result)
+
+        assert "Package not found: nonexistent" in output
 
 
 class TestMain:
     """Test main function."""
 
     @pytest.fixture
-    def sample_data_dir(self, tmp_path: Path) -> Path:
-        """Create sample data files."""
-        # Create binary_packages.json
-        binary_data = {
-            "aaa_base": {"name": "aaa_base", "required_by": ["aaa_base-extras"]},
-            "aaa_base-extras": {"name": "aaa_base-extras", "required_by": []},
-        }
-        binary_file = tmp_path / "binary_packages.json"
-        with open(binary_file, "w") as f:
-            json.dump(binary_data, f)
-
-        # Create media_inclusion.json
-        media_data = {
-            "aaa_base": {
-                "SLE-15-SP7-Full-x86_64-GM-Media1": [
-                    {
-                        "reason_chain": ["aaa_base include"],
-                        "required_by_rpm": "filesystem",
-                    }
-                ]
-            },
-            "aaa_base-extras": {
-                "SLE-15-SP7-Full-x86_64-GM-Media1": [
-                    {"reason_chain": ["aaa_base-extras include"], "required_by_rpm": None}
-                ]
-            },
-        }
-        media_file = tmp_path / "media_inclusion.json"
-        with open(media_file, "w") as f:
-            json.dump(media_data, f)
-
-        return tmp_path
-
-    def test_main_text_output(
-        self, sample_data_dir: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test main with text output."""
-        with patch.object(
-            sys, "argv", ["query-package", "aaa_base", "--data-dir", str(sample_data_dir)]
-        ):
-            result = main()
-
-        assert result == 0
-        captured = capsys.readouterr()
-        output = captured.out
-
-        # Verify output contains key information
-        assert "aaa_base" in output
-        assert "aaa_base-extras" in output
-        assert "Required by: aaa_base-extras" in output
-        assert "SLE-15-SP7-Full-x86_64-GM-Media1" in output
-        assert "filesystem" in output
-
-    def test_main_json_output(
-        self, sample_data_dir: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test main with JSON output."""
-        with patch.object(
-            sys,
-            "argv",
-            ["query-package", "aaa_base", "--data-dir", str(sample_data_dir), "--json"],
-        ):
-            result = main()
-
-        assert result == 0
-        captured = capsys.readouterr()
-        output_json = json.loads(captured.out)
-
-        # Verify JSON structure
-        assert output_json["source_package"] == "aaa_base"
-        assert output_json["found"] is True
-        assert len(output_json["binary_packages"]) == 2
-
-        # Verify first package
-        pkg1 = output_json["binary_packages"][0]
-        assert pkg1["binary_package"]["name"] == "aaa_base"
-        assert pkg1["binary_package"]["required_by"] == ["aaa_base-extras"]
-        assert pkg1["required_by_packages"] == ["aaa_base-extras"]
-        assert "SLE-15-SP7-Full-x86_64-GM-Media1" in pkg1["media_inclusions"]
-
-    def test_main_source_package_not_found(
-        self, sample_data_dir: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test main with non-existent source package."""
-        with patch.object(
-            sys,
-            "argv",
-            ["query-package", "nonexistent", "--data-dir", str(sample_data_dir)],
-        ):
-            result = main()
-
-        assert result == 0
-        captured = capsys.readouterr()
-        output = captured.out
-        assert "Source package: nonexistent" in output
-        assert "No binary packages found" in output
-
-    def test_main_source_package_not_found_json(
-        self, sample_data_dir: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test main with non-existent source package (JSON output)."""
-        with patch.object(
-            sys,
-            "argv",
-            ["query-package", "nonexistent", "--data-dir", str(sample_data_dir), "--json"],
-        ):
-            result = main()
-
-        assert result == 0
-        captured = capsys.readouterr()
-        output_json = json.loads(captured.out)
-
-        assert output_json["source_package"] == "nonexistent"
-        assert output_json["found"] is False
-        assert output_json["binary_packages"] == []
-
-    def test_main_binary_packages_file_not_found(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test main when binary_packages.json is missing."""
-        with patch.object(
-            sys, "argv", ["query-package", "test", "--data-dir", str(tmp_path)]
-        ):
-            result = main()
-
-        assert result == 1
-        captured = capsys.readouterr()
-        assert "Error: binary_packages.json not found" in captured.err
-
-    def test_main_media_inclusion_file_not_found(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test main when media_inclusion.json is missing."""
-        # Create only binary_packages.json
-        binary_file = tmp_path / "binary_packages.json"
-        with open(binary_file, "w") as f:
-            json.dump({}, f)
-
-        with patch.object(
-            sys, "argv", ["query-package", "test", "--data-dir", str(tmp_path)]
-        ):
-            result = main()
-
-        assert result == 1
-        captured = capsys.readouterr()
-        assert "Error: media_inclusion.json not found" in captured.err
-
-    def test_main_invalid_json(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test main with invalid JSON files."""
-        binary_file = tmp_path / "binary_packages.json"
-        binary_file.write_text("invalid json {]")
-
-        media_file = tmp_path / "media_inclusion.json"
-        with open(media_file, "w") as f:
-            json.dump({}, f)
-
-        with patch.object(
-            sys, "argv", ["query-package", "test", "--data-dir", str(tmp_path)]
-        ):
-            result = main()
-
-        assert result == 1
-        captured = capsys.readouterr()
-        assert "Error: Failed to parse" in captured.err
-
-    def test_main_package_not_in_media(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test main with package that's not in any media."""
-        binary_data = {"test-pkg": {"name": "test-pkg", "required_by": []}}
-        binary_file = tmp_path / "binary_packages.json"
-        with open(binary_file, "w") as f:
-            json.dump(binary_data, f)
-
-        media_data = {}  # Empty - package not in media
-        media_file = tmp_path / "media_inclusion.json"
-        with open(media_file, "w") as f:
-            json.dump(media_data, f)
-
-        with patch.object(
-            sys, "argv", ["query-package", "test", "--data-dir", str(tmp_path)]
-        ):
-            result = main()
-
-        assert result == 0
-        captured = capsys.readouterr()
-        output = captured.out
-        assert "test-pkg" in output
-        assert "Not in media" in output
-
-    def test_main_multiple_media(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-        """Test main with package in multiple media."""
-        binary_data = {"multi-pkg": {"name": "multi-pkg", "required_by": []}}
-        binary_file = tmp_path / "binary_packages.json"
-        with open(binary_file, "w") as f:
-            json.dump(binary_data, f)
-
-        media_data = {
-            "multi-pkg": {
-                "SLE-15-SP7-Full-x86_64-GM-Media1": [
-                    {"reason_chain": ["multi-pkg include"], "required_by_rpm": None}
-                ],
-                "SLE-15-SP7-Full-aarch64-GM-Media1": [
-                    {"reason_chain": ["multi-pkg include"], "required_by_rpm": "other-pkg"}
-                ],
+    def sample_packages_file(self, tmp_path: Path) -> Path:
+        """Create sample packages.json."""
+        packages_file = tmp_path / "packages.json"
+        data = {
+            "bash": {
+                "bash": {
+                    "required_by": ["rpm"],
+                    "included": True,
+                    "required_by_rpm": ["filesystem"],
+                }
             }
         }
-        media_file = tmp_path / "media_inclusion.json"
-        with open(media_file, "w") as f:
-            json.dump(media_data, f)
+        with open(packages_file, "w") as f:
+            json.dump(data, f)
+        return packages_file
 
-        with patch.object(
-            sys, "argv", ["query-package", "multi", "--data-dir", str(tmp_path)]
-        ):
-            result = main()
+    @patch("sys.argv", ["query_package", "bash", "--data-dir", "/tmp"])
+    @patch("src.query_package.load_packages")
+    def test_main_success_human_readable(self, mock_load: MagicMock) -> None:
+        """Test successful query with human-readable output."""
+        mock_load.return_value = {
+            "bash": {
+                "bash": {
+                    "required_by": ["rpm"],
+                    "included": True,
+                    "required_by_rpm": ["filesystem"],
+                }
+            }
+        }
+
+        result = main()
 
         assert result == 0
-        captured = capsys.readouterr()
-        output = captured.out
-        assert "SLE-15-SP7-Full-x86_64-GM-Media1" in output
-        assert "SLE-15-SP7-Full-aarch64-GM-Media1" in output
-        assert "other-pkg" in output
+        mock_load.assert_called_once()
+
+    @patch("sys.argv", ["query_package", "bash", "--data-dir", "/tmp", "--json"])
+    @patch("src.query_package.load_packages")
+    def test_main_success_json_output(self, mock_load: MagicMock) -> None:
+        """Test successful query with JSON output."""
+        mock_load.return_value = {
+            "bash": {
+                "bash": {
+                    "required_by": ["rpm"],
+                    "included": True,
+                    "required_by_rpm": ["filesystem"],
+                }
+            }
+        }
+
+        result = main()
+
+        assert result == 0
+
+    @patch("sys.argv", ["query_package", "bash"])
+    @patch("src.query_package.load_packages")
+    def test_main_file_not_found(self, mock_load: MagicMock) -> None:
+        """Test when packages.json is not found."""
+        mock_load.side_effect = FileNotFoundError("packages.json not found")
+
+        result = main()
+
+        assert result == 1
+
+    @patch("sys.argv", ["query_package", "bash"])
+    @patch("src.query_package.load_packages")
+    def test_main_unexpected_error(self, mock_load: MagicMock) -> None:
+        """Test handling of unexpected errors."""
+        mock_load.side_effect = Exception("Unexpected error")
+
+        result = main()
+
+        assert result == 1
