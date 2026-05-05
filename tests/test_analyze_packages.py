@@ -126,7 +126,7 @@ class TestMain:
             monkey_path=str(Path("/opt/monkey")), output_dir=tmp_path
         )
         mock_analyzer.analyze_and_write.assert_called_once_with(
-            ["aaa_base", "bash", "coreutils"]
+            ["aaa_base", "bash", "coreutils"], show_progress=True
         )
 
     @patch("src.analyze_packages.Config")
@@ -299,7 +299,7 @@ class TestMain:
             result = main()
 
         assert result == 0
-        mock_analyzer.analyze_and_write.assert_called_once_with([])
+        mock_analyzer.analyze_and_write.assert_called_once_with([], show_progress=True)
 
     @patch("src.analyze_packages.setup_logging")
     @patch("src.analyze_packages.PackageAnalyzer")
@@ -444,3 +444,51 @@ class TestMain:
 
         assert result == 1
         assert "Failed to parse source packages file" in caplog.text
+
+    @patch("src.analyze_packages.setup_logging")
+    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Config")
+    def test_main_progress_bar_enabled_by_default(
+        self,
+        mock_config: MagicMock,
+        mock_analyzer_class: MagicMock,
+        mock_setup_logging: MagicMock,
+        sample_source_packages_file: Path,
+    ) -> None:
+        """Test that progress bar is enabled by default."""
+        mock_config.get_package_monkey_path.return_value = Path("/opt/monkey")
+        mock_analyzer = MagicMock()
+        mock_analyzer_class.return_value = mock_analyzer
+
+        with patch.object(sys, "argv", ["analyze_packages", str(sample_source_packages_file)]):
+            main()
+
+        # Verify analyze_and_write was called with show_progress=True
+        mock_analyzer.analyze_and_write.assert_called_once()
+        call_args = mock_analyzer.analyze_and_write.call_args
+        assert call_args[1]["show_progress"] is True
+
+    @patch("src.analyze_packages.setup_logging")
+    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Config")
+    def test_main_quiet_disables_progress_bar(
+        self,
+        mock_config: MagicMock,
+        mock_analyzer_class: MagicMock,
+        mock_setup_logging: MagicMock,
+        sample_source_packages_file: Path,
+    ) -> None:
+        """Test that --quiet flag disables progress bar."""
+        mock_config.get_package_monkey_path.return_value = Path("/opt/monkey")
+        mock_analyzer = MagicMock()
+        mock_analyzer_class.return_value = mock_analyzer
+
+        with patch.object(
+            sys, "argv", ["analyze_packages", str(sample_source_packages_file), "--quiet"]
+        ):
+            main()
+
+        # Verify analyze_and_write was called with show_progress=False
+        mock_analyzer.analyze_and_write.assert_called_once()
+        call_args = mock_analyzer.analyze_and_write.call_args
+        assert call_args[1]["show_progress"] is False

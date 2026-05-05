@@ -341,7 +341,7 @@ class TestAnalyzeAndWrite:
 
         analyzer.analyze_and_write(["bash"])
 
-        mock_analyze.assert_called_once_with(["bash"])
+        mock_analyze.assert_called_once_with(["bash"], show_progress=True)
         mock_write.assert_called_once_with(mock_packages_data)
 
 

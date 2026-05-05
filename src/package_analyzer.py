@@ -185,11 +185,14 @@ class PackageAnalyzer:
         with open(output_path, "w") as f:
             json.dump(output_dict, f, indent=2)
 
-    def analyze_and_write(self, source_packages: list[str]) -> None:
+    def analyze_and_write(
+        self, source_packages: list[str], show_progress: bool = True
+    ) -> None:
         """Analyze source packages and write results to JSON file.
 
         Args:
             source_packages: List of source package names to analyze.
+            show_progress: Whether to display progress bar. Defaults to True.
         """
-        packages_data = self.analyze_packages(source_packages)
+        packages_data = self.analyze_packages(source_packages, show_progress=show_progress)
         self._write_results(packages_data)

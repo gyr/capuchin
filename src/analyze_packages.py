@@ -109,7 +109,7 @@ def main() -> int:
         analyzer = PackageAnalyzer(
             monkey_path=monkey_path, output_dir=args.output_dir
         )
-        analyzer.analyze_and_write(source_packages)
+        analyzer.analyze_and_write(source_packages, show_progress=not args.quiet)
 
         output_file = args.output_dir / "packages.json"
         print(f"Analysis complete. Results written to {output_file}")
