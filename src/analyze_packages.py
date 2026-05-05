@@ -2,11 +2,15 @@
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
 
 from src.config import Config
+from src.logging_config import setup_logging
 from src.package_analyzer import PackageAnalyzer
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args(args: list[str] | None = None) -> argparse.Namespace:
@@ -40,6 +44,29 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         help="Path to monkey executable directory (overrides PACKAGE_MONKEY_PATH env var)",
     )
 
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        default=False,
+        help="Enable verbose (DEBUG level) logging",
+    )
+
+    parser.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        default=False,
+        help="Suppress progress bar and console output (logging to file still works)",
+    )
+
+    parser.add_argument(
+        "--log-file",
+        type=Path,
+        default=None,
+        help="Write logs to specified file",
+    )
+
     return parser.parse_args(args)
 
 
@@ -51,31 +78,27 @@ def main() -> int:
     """
     args = parse_args()
 
+    # Setup logging early
+    setup_logging(verbose=args.verbose, log_file=args.log_file, quiet=args.quiet)
+
     try:
         # Read source packages from JSON file
         source_packages_path = Path(args.source_packages_file)
         if not source_packages_path.exists():
-            print(
-                f"Error: Source packages file not found: {source_packages_path}",
-                file=sys.stderr,
-            )
+            logger.error("Source packages file not found: %s", source_packages_path)
             return 1
 
         try:
             with open(source_packages_path) as f:
                 source_packages = json.load(f)
         except json.JSONDecodeError as e:
-            print(
-                f"Error: Failed to parse source packages file: {e}",
-                file=sys.stderr,
-            )
+            logger.error("Failed to parse source packages file: %s", e)
             return 1
 
         # Validate that it's a list
         if not isinstance(source_packages, list):
-            print(
-                "Error: Source packages file must contain a JSON array of package names",
-                file=sys.stderr,
+            logger.error(
+                "Source packages file must contain a JSON array of package names"
             )
             return 1
 
@@ -93,13 +116,13 @@ def main() -> int:
         return 0
 
     except ValueError as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error("%s", e)
         return 1
     except RuntimeError as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error("%s", e)
         return 1
     except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
+        logger.error("Unexpected error: %s", e)
         return 1
 
 
