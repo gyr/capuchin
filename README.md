@@ -7,6 +7,8 @@ A Python tool to analyze source packages and their binary dependencies using the
 - **Binary Package Analysis**: Extract binary packages from source packages with reverse dependency tracking
 - **Media Inclusion Tracking**: Determine which media includes each binary package and whether it's required by another package
 - **Simplified Data Model**: Focus on essential information (package names, dependencies, media inclusion) - no metadata like versions, architectures, or epic classifications
+- **Progress Tracking**: Real-time progress bar showing completion percentage and ETA
+- **Comprehensive Logging**: Industry-standard logging with verbose/quiet modes and file output
 - **Query Tool**: Interactive query interface to explore package information
 - **JSON Output**: Structured JSON output for downstream processing
 
@@ -136,11 +138,24 @@ analyze-packages source_packages.json --output-dir ./output
 
 # Override PACKAGE_MONKEY_PATH
 analyze-packages source_packages.json --monkey-path /custom/path/to/monkey
+
+# Verbose logging (shows DEBUG level logs including exact commands)
+analyze-packages source_packages.json --verbose
+
+# Quiet mode (no progress bar or console output)
+analyze-packages source_packages.json --quiet
+
+# Write logs to file
+analyze-packages source_packages.json --log-file analysis.log
+
+# Combined: verbose logs to file, quiet console, no progress bar
+analyze-packages source_packages.json --verbose --log-file debug.log --quiet
 ```
 
 **What it does:**
 - Reads source package names from the JSON file (must be a JSON array of strings)
 - Executes `monkey buildinfo` and `monkey ex` commands for each package
+- Shows progress bar with completion percentage (unless --quiet is used)
 - Generates a single `packages.json` file in the output directory with all package data
 
 **Example source_packages.json:**
@@ -194,6 +209,67 @@ Source package: gettext-runtime
 **JSON output:**
 ```bash
 query-package fwts --json | jq .
+```
+
+### 3. Logging and Progress
+
+The analyzer provides comprehensive logging and progress tracking:
+
+#### Progress Bar
+
+By default, a progress bar displays during analysis showing:
+- Current package being analyzed
+- Completion percentage
+- Estimated time remaining
+
+To disable the progress bar, use the `--quiet` flag.
+
+#### Logging Levels
+
+**Default (INFO):**
+- Shows package analysis progress
+- Binary package counts
+- Timing information
+- Formatted with colors for readability
+
+**Verbose (DEBUG):**
+```bash
+analyze-packages source_packages.json --verbose
+```
+- All INFO level logs
+- Exact `monkey` commands before execution
+- Detailed debugging information
+
+**Quiet:**
+```bash
+analyze-packages source_packages.json --quiet
+```
+- No console output (progress bar and logs suppressed)
+- File logging still works if `--log-file` is specified
+- Ideal for CI/CD pipelines or scripted usage
+
+#### File Logging
+
+Write logs to a file for later analysis:
+```bash
+analyze-packages source_packages.json --log-file analysis.log
+```
+
+**File log features:**
+- Always DEBUG level (regardless of console verbosity)
+- Machine-readable format without colors
+- Includes all commands executed and timing information
+
+**Common patterns:**
+```bash
+# Quiet console, detailed file logs
+analyze-packages source_packages.json --quiet --log-file analysis.log
+
+# Verbose console and file logs
+analyze-packages source_packages.json --verbose --log-file debug.log
+
+# Debug to file only, no console clutter
+analyze-packages source_packages.json --verbose --quiet --log-file debug.log
 ```
 
 ## Output Format

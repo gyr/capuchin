@@ -26,8 +26,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Use system-installed `monkey` command instead of path-based executable
 - Simplified media inclusion parsing (40 lines removed)
+- Read `monkey ex` output from stderr instead of stdout
 
 ### Added
+- **Progress bar**: Real-time progress tracking with completion percentage and ETA during analysis
+- **Industry-standard logging**: Comprehensive logging using Python's logging module with rich formatting
+  - `--verbose/-v`: Enable DEBUG level logging showing exact commands
+  - `--quiet/-q`: Suppress progress bar and console output (for CI/CD)
+  - `--log-file PATH`: Write detailed logs to file (always DEBUG level)
+  - Colored console output with RichHandler for better readability
+  - Module-level loggers throughout codebase
+  - Timing information for analysis operations
 - Initial project setup with Python 3.12 and uv
 - Configuration module with environment variable support (PACKAGE_MONKEY_PATH)
 - Monkey output parser for buildinfo and ex commands
