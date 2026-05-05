@@ -18,6 +18,8 @@ A Python tool to analyze source packages and their binary dependencies using the
 
 ## Installation
 
+### For Development
+
 1. Clone the repository:
 ```bash
 git clone <repository-url>
@@ -28,6 +30,18 @@ cd package-analyzer
 ```bash
 uv sync
 ```
+
+### For CLI Usage
+
+To install the package and enable CLI commands (`analyze-packages`, `query-package`):
+
+```bash
+uv pip install -e .
+```
+
+This creates executable entry points in your environment. After installation, you can run:
+- `analyze-packages` instead of `python -m src.analyze_packages`
+- `query-package` instead of `python -m src.query_package`
 
 ## Configuration
 
@@ -49,32 +63,62 @@ PACKAGE_MONKEY_PATH=/home/user/work/repos/monkey/package_monkey
 
 ## Usage
 
+There are two ways to run the tools:
+
+1. **Without installation** (for development/testing):
+   ```bash
+   python -m src.analyze_packages source_packages.json
+   python -m src.query_package <package_name>
+   ```
+
+2. **After installation** (`uv pip install -e .`):
+   ```bash
+   analyze-packages source_packages.json
+   query-package <package_name>
+   ```
+
+The following examples use the installed CLI commands. If you haven't installed the package, replace `analyze-packages` with `python -m src.analyze_packages` and `query-package` with `python -m src.query_package`.
+
 ### 1. Analyze Source Packages
 
-Run the analysis tool to process all source packages listed in `source_packages.json`:
+Run the analysis tool to process source packages from a JSON file:
 
 ```bash
-uv run python -m src.analyze_packages
+analyze-packages source_packages.json
 ```
 
-This will:
-- Read source packages from `source_packages.json`
-- Execute `monkey buildinfo` and `monkey ex` commands for each package
-- Generate two JSON files in the `output/` directory:
+**With options:**
+```bash
+# Specify custom output directory
+analyze-packages source_packages.json --output-dir ./output
+
+# Override PACKAGE_MONKEY_PATH
+analyze-packages source_packages.json --monkey-path /custom/path/to/monkey
+```
+
+**What it does:**
+- Reads source package names from the JSON file (must be a JSON array of strings)
+- Executes `monkey buildinfo` and `monkey ex` commands for each package
+- Generates two JSON files in the output directory:
   - `binary_packages.json`: Binary packages with reverse dependencies
   - `media_inclusion.json`: Media inclusion information
+
+**Example source_packages.json:**
+```json
+["aaa_base", "bash", "coreutils"]
+```
 
 ### 2. Query Package Information
 
 Query information about a specific source package:
 
 ```bash
-uv run python -m src.query_package <source_package_name>
+query-package <source_package_name>
 ```
 
 **Example:**
 ```bash
-uv run python -m src.query_package gettext-runtime
+query-package gettext-runtime
 ```
 
 **Output:**
@@ -100,7 +144,7 @@ Binary Packages: 8
 
 **JSON output:**
 ```bash
-uv run python -m src.query_package fwts --json | jq .
+query-package fwts --json | jq .
 ```
 
 ## Output Format
