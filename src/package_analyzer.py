@@ -1,11 +1,15 @@
 """Package analyzer orchestration."""
 
 import json
+import logging
 import subprocess
+import time
 from pathlib import Path
 
 from src.models import BinaryPackageData, SourcePackageData
 from src.monkey_parser import MonkeyParser
+
+logger = logging.getLogger(__name__)
 
 
 class PackageAnalyzer:
@@ -37,6 +41,7 @@ class PackageAnalyzer:
             RuntimeError: If command execution fails.
         """
         cmd = ["monkey", "buildinfo", source_package]
+        logger.debug("Running: %s", " ".join(cmd))
 
         try:
             result = subprocess.run(
@@ -48,6 +53,7 @@ class PackageAnalyzer:
             )
             return result.stdout
         except subprocess.CalledProcessError as e:
+            logger.error("Failed to run monkey buildinfo for %s: %s", source_package, e)
             raise RuntimeError(
                 f"Failed to run monkey buildinfo for {source_package}: {e}"
             ) from e
@@ -67,6 +73,7 @@ class PackageAnalyzer:
             RuntimeError: If command execution fails.
         """
         cmd = ["monkey", "ex", binary_package]
+        logger.debug("Running: %s", " ".join(cmd))
 
         try:
             result = subprocess.run(
@@ -78,6 +85,7 @@ class PackageAnalyzer:
             )
             return result.stderr
         except subprocess.CalledProcessError as e:
+            logger.error("Failed to run monkey ex for %s: %s", binary_package, e)
             raise RuntimeError(
                 f"Failed to run monkey ex for {binary_package}: {e}"
             ) from e
@@ -91,11 +99,14 @@ class PackageAnalyzer:
         Returns:
             SourcePackageData containing binaries with merged buildinfo and ex data.
         """
+        logger.info("Analyzing source package: %s", source_package)
         binaries: dict[str, BinaryPackageData] = {}
 
         # Get binary packages from buildinfo
         buildinfo_output = self._run_buildinfo(source_package)
         binary_packages = self.parser.parse_buildinfo(buildinfo_output)
+
+        logger.info("Found %d binary packages in %s", len(binary_packages), source_package)
 
         # For each binary package, merge buildinfo and ex data
         for binary_pkg in binary_packages:
@@ -126,11 +137,16 @@ class PackageAnalyzer:
         Returns:
             Dictionary mapping source package names to SourcePackageData.
         """
+        logger.info("Starting analysis of %d source packages", len(source_packages))
+        start_time = time.perf_counter()
         packages_data: dict[str, SourcePackageData] = {}
 
         for source_pkg in source_packages:
             source_data = self.analyze_source_package(source_pkg)
             packages_data[source_pkg] = source_data
+
+        elapsed = time.perf_counter() - start_time
+        logger.info("Completed analysis of %d packages in %.1fs elapsed", len(source_packages), elapsed)
 
         return packages_data
 

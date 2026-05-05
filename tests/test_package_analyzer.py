@@ -1,6 +1,7 @@
 """Tests for PackageAnalyzer."""
 
 import json
+import logging
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -288,3 +289,113 @@ class TestAnalyzeAndWrite:
 
         mock_analyze.assert_called_once_with(["bash"])
         mock_write.assert_called_once_with(mock_packages_data)
+
+
+class TestLogging:
+    """Test logging behavior in PackageAnalyzer."""
+
+    @patch.object(PackageAnalyzer, "_run_buildinfo")
+    @patch.object(PackageAnalyzer, "_run_ex")
+    def test_analyze_source_package_logs_start(
+        self,
+        mock_ex: MagicMock,
+        mock_buildinfo: MagicMock,
+        analyzer: PackageAnalyzer,
+        sample_buildinfo_output: str,
+        sample_ex_bash_included: str,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test that analyzing a package logs INFO message."""
+        mock_buildinfo.return_value = sample_buildinfo_output
+        mock_ex.return_value = sample_ex_bash_included
+
+        with caplog.at_level(logging.INFO):
+            analyzer.analyze_source_package("bash")
+
+        assert "Analyzing source package: bash" in caplog.text
+
+    @patch.object(PackageAnalyzer, "_run_buildinfo")
+    @patch.object(PackageAnalyzer, "_run_ex")
+    def test_analyze_source_package_logs_binary_count(
+        self,
+        mock_ex: MagicMock,
+        mock_buildinfo: MagicMock,
+        analyzer: PackageAnalyzer,
+        sample_buildinfo_output: str,
+        sample_ex_bash_included: str,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test that binary package count is logged."""
+        mock_buildinfo.return_value = sample_buildinfo_output
+        mock_ex.return_value = sample_ex_bash_included
+
+        with caplog.at_level(logging.INFO):
+            analyzer.analyze_source_package("bash")
+
+        assert "Found 2 binary packages" in caplog.text
+
+    @patch("subprocess.run")
+    def test_run_buildinfo_logs_command(
+        self,
+        mock_run: MagicMock,
+        analyzer: PackageAnalyzer,
+        sample_buildinfo_output: str,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test that buildinfo command is logged at DEBUG level."""
+        mock_run.return_value = MagicMock(
+            stdout=sample_buildinfo_output, returncode=0
+        )
+
+        with caplog.at_level(logging.DEBUG):
+            analyzer._run_buildinfo("bash")
+
+        assert "Running: monkey buildinfo bash" in caplog.text
+
+    @patch("subprocess.run")
+    def test_run_ex_logs_command(
+        self,
+        mock_run: MagicMock,
+        analyzer: PackageAnalyzer,
+        sample_ex_bash_included: str,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test that ex command is logged at DEBUG level."""
+        mock_run.return_value = MagicMock(
+            stdout="", stderr=sample_ex_bash_included, returncode=0
+        )
+
+        with caplog.at_level(logging.DEBUG):
+            analyzer._run_ex("bash")
+
+        assert "Running: monkey ex bash" in caplog.text
+
+    def test_analyze_packages_logs_total_count(
+        self,
+        analyzer: PackageAnalyzer,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test that total package count is logged."""
+        with patch.object(analyzer, "analyze_source_package") as mock_analyze:
+            mock_analyze.return_value = MagicMock()
+
+            with caplog.at_level(logging.INFO):
+                analyzer.analyze_packages(["bash", "coreutils"])
+
+        assert "Starting analysis of 2 source packages" in caplog.text
+
+    def test_analyze_packages_logs_completion(
+        self,
+        analyzer: PackageAnalyzer,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test that completion is logged with timing."""
+        with patch.object(analyzer, "analyze_source_package") as mock_analyze:
+            mock_analyze.return_value = MagicMock()
+
+            with caplog.at_level(logging.INFO):
+                analyzer.analyze_packages(["bash"])
+
+        # Should log completion with elapsed time
+        assert "Completed analysis" in caplog.text
+        assert "elapsed" in caplog.text.lower()
