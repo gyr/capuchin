@@ -6,6 +6,8 @@ import subprocess
 import time
 from pathlib import Path
 
+from rich.progress import Progress
+
 from src.models import BinaryPackageData, SourcePackageData
 from src.monkey_parser import MonkeyParser
 
@@ -127,12 +129,13 @@ class PackageAnalyzer:
         )
 
     def analyze_packages(
-        self, source_packages: list[str]
+        self, source_packages: list[str], show_progress: bool = True
     ) -> dict[str, SourcePackageData]:
         """Analyze multiple source packages.
 
         Args:
             source_packages: List of source package names to analyze.
+            show_progress: Whether to display progress bar. Defaults to True.
 
         Returns:
             Dictionary mapping source package names to SourcePackageData.
@@ -141,12 +144,24 @@ class PackageAnalyzer:
         start_time = time.perf_counter()
         packages_data: dict[str, SourcePackageData] = {}
 
-        for source_pkg in source_packages:
-            source_data = self.analyze_source_package(source_pkg)
-            packages_data[source_pkg] = source_data
+        if show_progress:
+            with Progress() as progress:
+                task = progress.add_task("Analyzing packages", total=len(source_packages))
+                for source_pkg in source_packages:
+                    source_data = self.analyze_source_package(source_pkg)
+                    packages_data[source_pkg] = source_data
+                    progress.update(task, advance=1)
+        else:
+            for source_pkg in source_packages:
+                source_data = self.analyze_source_package(source_pkg)
+                packages_data[source_pkg] = source_data
 
         elapsed = time.perf_counter() - start_time
-        logger.info("Completed analysis of %d packages in %.1fs elapsed", len(source_packages), elapsed)
+        logger.info(
+            "Completed analysis of %d packages in %.1fs elapsed",
+            len(source_packages),
+            elapsed,
+        )
 
         return packages_data
 

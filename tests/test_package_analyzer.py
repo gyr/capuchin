@@ -213,6 +213,60 @@ class TestAnalyzePackages:
         assert "grep" in grep_source.binaries
         assert grep_source.binaries["grep"].included is False
 
+    @patch("src.package_analyzer.Progress")
+    @patch.object(PackageAnalyzer, "analyze_source_package")
+    def test_analyze_packages_with_progress_bar(
+        self, mock_analyze: MagicMock, mock_progress_class: MagicMock, analyzer: PackageAnalyzer
+    ) -> None:
+        """Test that progress bar is displayed during analysis."""
+        from src.models import BinaryPackageData, SourcePackageData
+
+        # Create mock progress instance
+        mock_progress = MagicMock()
+        mock_progress_class.return_value.__enter__.return_value = mock_progress
+        mock_task_id = MagicMock()
+        mock_progress.add_task.return_value = mock_task_id
+
+        # Mock analyze_source_package
+        mock_data = SourcePackageData(
+            source_name="bash",
+            binaries={"bash": BinaryPackageData(required_by=[], included=True, required_by_rpm=[])},
+        )
+        mock_analyze.return_value = mock_data
+
+        # Analyze with progress (default)
+        analyzer.analyze_packages(["bash", "grep", "coreutils"])
+
+        # Verify Progress was created
+        mock_progress_class.assert_called_once()
+
+        # Verify task was added with total count
+        mock_progress.add_task.assert_called_once_with("Analyzing packages", total=3)
+
+        # Verify update was called for each package (3 times)
+        assert mock_progress.update.call_count == 3
+        mock_progress.update.assert_called_with(mock_task_id, advance=1)
+
+    @patch("src.package_analyzer.Progress")
+    @patch.object(PackageAnalyzer, "analyze_source_package")
+    def test_analyze_packages_without_progress_bar(
+        self, mock_analyze: MagicMock, mock_progress_class: MagicMock, analyzer: PackageAnalyzer
+    ) -> None:
+        """Test that progress bar is not displayed when show_progress=False."""
+        from src.models import BinaryPackageData, SourcePackageData
+
+        mock_data = SourcePackageData(
+            source_name="bash",
+            binaries={"bash": BinaryPackageData(required_by=[], included=True, required_by_rpm=[])},
+        )
+        mock_analyze.return_value = mock_data
+
+        # Analyze without progress
+        analyzer.analyze_packages(["bash", "grep"], show_progress=False)
+
+        # Verify Progress was NOT created
+        mock_progress_class.assert_not_called()
+
 
 class TestWriteResults:
     """Test _write_results method."""
