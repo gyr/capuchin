@@ -5,6 +5,7 @@ import json
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 # Module-level logger
 logger = logging.getLogger(__name__)
@@ -44,7 +45,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(args)
 
 
-def load_packages(data_dir: Path) -> dict[str, dict[str, dict[str, object]]]:
+def load_packages(data_dir: Path) -> dict[str, dict[str, dict[str, Any]]]:
     """Load packages data from packages.json.
 
     Args:
@@ -66,8 +67,8 @@ def load_packages(data_dir: Path) -> dict[str, dict[str, dict[str, object]]]:
 
 
 def query_package(
-    package_name: str, packages_data: dict[str, dict[str, dict[str, object]]]
-) -> dict[str, object]:
+    package_name: str, packages_data: dict[str, dict[str, dict[str, Any]]]
+) -> dict[str, Any]:  # Result varies by query type
     """Query for a package by name.
 
     Searches first as a source package, then as a binary package across all sources.
@@ -106,7 +107,7 @@ def query_package(
     }
 
 
-def format_human_readable(query_result: dict[str, object]) -> str:
+def format_human_readable(query_result: dict[str, Any]) -> str:
     """Format query result as human-readable text.
 
     Args:

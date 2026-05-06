@@ -142,13 +142,3 @@ class MonkeyParser:
 
         return (found_in_media, sorted(required_by_rpm_set))
 
-    def _has_tree_chars(self, line: str) -> bool:
-        """Check if line contains tree drawing characters."""
-        return any(char in line for char in ["└─>", "├─>", "│"])
-
-    def _strip_tree_chars(self, line: str) -> str:
-        """Remove tree drawing characters from a line."""
-        cleaned = line
-        for char_seq in ["└─>", "├─>", "│"]:
-            cleaned = cleaned.replace(char_seq, "")
-        return cleaned

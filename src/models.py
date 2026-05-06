@@ -1,6 +1,7 @@
 """Data models for Package Analyzer."""
 
 from dataclasses import asdict, dataclass
+from typing import Any
 
 
 @dataclass
@@ -11,7 +12,7 @@ class BinaryPackageData:
     included: bool  # Whether package appears in any media
     required_by_rpm: list[str]  # RPMs that require this in media (can be multiple)
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, Any]:  # Mixed types from dataclass fields
         """Convert to dictionary for JSON serialization."""
         return asdict(self)
 
@@ -23,7 +24,7 @@ class SourcePackageData:
     source_name: str
     binaries: dict[str, BinaryPackageData]  # {binary_name: BinaryPackageData}
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, Any]:  # Mixed types from dataclass fields
         """Convert to dictionary for JSON serialization.
 
         Returns only the binaries dict (without source_name key),
