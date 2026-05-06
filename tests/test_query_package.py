@@ -1,6 +1,7 @@
 """Tests for query_package CLI."""
 
 import json
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -279,3 +280,47 @@ class TestMain:
         result = main()
 
         assert result == 1
+
+    @patch("sys.argv", ["query_package", "bash"])
+    @patch("src.query_package.load_packages")
+    def test_main_logs_file_not_found_error(
+        self, mock_load: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that FileNotFoundError is logged at ERROR level."""
+        mock_load.side_effect = FileNotFoundError("packages.json not found in /tmp")
+
+        with caplog.at_level(logging.ERROR):
+            result = main()
+
+        assert result == 1
+        assert "packages.json not found in /tmp" in caplog.text
+
+    @patch("sys.argv", ["query_package", "bash", "--data-dir", "/tmp"])
+    def test_main_logs_json_decode_error(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that JSONDecodeError is logged at ERROR level."""
+        # Create invalid JSON file
+        invalid_json = tmp_path / "packages.json"
+        invalid_json.write_text("{ invalid json ]")
+
+        with patch("sys.argv", ["query_package", "bash", "--data-dir", str(tmp_path)]):
+            with caplog.at_level(logging.ERROR):
+                result = main()
+
+        assert result == 1
+        assert "Failed to parse packages.json" in caplog.text
+
+    @patch("sys.argv", ["query_package", "bash"])
+    @patch("src.query_package.load_packages")
+    def test_main_logs_unexpected_error(
+        self, mock_load: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that unexpected errors are logged at ERROR level."""
+        mock_load.side_effect = Exception("Something went wrong")
+
+        with caplog.at_level(logging.ERROR):
+            result = main()
+
+        assert result == 1
+        assert "Something went wrong" in caplog.text

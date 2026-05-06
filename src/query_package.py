@@ -2,8 +2,12 @@
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
+
+# Module-level logger
+logger = logging.getLogger(__name__)
 
 
 def parse_args(args: list[str] | None = None) -> argparse.Namespace:
@@ -143,6 +147,13 @@ def main() -> int:
     Returns:
         Exit code (0 for success, 1 for error).
     """
+    # Setup basic logging (INFO level, no file handler)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(message)s",
+        handlers=[logging.StreamHandler()],
+    )
+
     args = parse_args()
 
     try:
@@ -162,13 +173,13 @@ def main() -> int:
         return 0 if result["type"] != "not_found" else 1
 
     except FileNotFoundError as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error("%s", e)
         return 1
     except json.JSONDecodeError as e:
-        print(f"Error: Failed to parse packages.json: {e}", file=sys.stderr)
+        logger.error("Failed to parse packages.json: %s", e)
         return 1
     except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
+        logger.error("Unexpected error: %s", e)
         return 1
 
 
