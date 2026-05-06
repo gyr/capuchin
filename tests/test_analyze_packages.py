@@ -492,3 +492,30 @@ class TestMain:
         mock_analyzer.analyze_and_write.assert_called_once()
         call_args = mock_analyzer.analyze_and_write.call_args
         assert call_args[1]["show_progress"] is False
+
+    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Config")
+    def test_main_logs_success_message(
+        self,
+        mock_config: MagicMock,
+        mock_analyzer_class: MagicMock,
+        sample_source_packages_file: Path,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test that success message is logged at INFO level."""
+        mock_config.get_package_monkey_path.return_value = Path("/opt/monkey")
+        mock_analyzer = MagicMock()
+        mock_analyzer_class.return_value = mock_analyzer
+
+        with patch.object(
+            sys,
+            "argv",
+            ["analyze_packages", str(sample_source_packages_file), "--output-dir", str(tmp_path)],
+        ):
+            with caplog.at_level(logging.INFO):
+                result = main()
+
+        assert result == 0
+        assert "Analysis complete" in caplog.text
+        assert str(tmp_path / "packages.json") in caplog.text

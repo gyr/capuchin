@@ -112,7 +112,7 @@ def main() -> int:
         analyzer.analyze_and_write(source_packages, show_progress=not args.quiet)
 
         output_file = args.output_dir / "packages.json"
-        print(f"Analysis complete. Results written to {output_file}")
+        logger.info("Analysis complete. Results written to %s", output_file)
         return 0
 
     except ValueError as e:
