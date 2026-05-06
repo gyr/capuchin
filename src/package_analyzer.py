@@ -6,7 +6,13 @@ import subprocess
 import time
 from pathlib import Path
 
-from rich.progress import Progress
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    TaskProgressColumn,
+    TextColumn,
+)
 
 from src.models import BinaryPackageData, SourcePackageData
 from src.monkey_parser import MonkeyParser
@@ -145,7 +151,12 @@ class PackageAnalyzer:
         packages_data: dict[str, SourcePackageData] = {}
 
         if show_progress:
-            with Progress() as progress:
+            with Progress(
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                MofNCompleteColumn(),  # Shows "5/25" format
+                TaskProgressColumn(),  # Shows percentage
+            ) as progress:
                 task = progress.add_task("Analyzing packages", total=len(source_packages))
                 for source_pkg in source_packages:
                     source_data = self.analyze_source_package(source_pkg)

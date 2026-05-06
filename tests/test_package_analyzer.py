@@ -267,6 +267,42 @@ class TestAnalyzePackages:
         # Verify Progress was NOT created
         mock_progress_class.assert_not_called()
 
+    @patch("src.package_analyzer.Progress")
+    @patch.object(PackageAnalyzer, "analyze_source_package")
+    def test_progress_bar_uses_count_based_columns(
+        self, mock_analyze: MagicMock, mock_progress_class: MagicMock, analyzer: PackageAnalyzer
+    ) -> None:
+        """Test that progress bar uses count-based columns, not time remaining."""
+        from rich.progress import (
+            BarColumn,
+            MofNCompleteColumn,
+            TaskProgressColumn,
+            TextColumn,
+        )
+
+        from src.models import BinaryPackageData, SourcePackageData
+
+        mock_data = SourcePackageData(
+            source_name="bash",
+            binaries={"bash": BinaryPackageData(required_by=[], included=True, required_by_rpm=[])},
+        )
+        mock_analyze.return_value = mock_data
+
+        analyzer.analyze_packages(["bash", "grep"], show_progress=True)
+
+        # Verify Progress was called with specific columns (not default)
+        mock_progress_class.assert_called_once()
+        call_args = mock_progress_class.call_args
+
+        # Should have exactly 4 column arguments
+        assert len(call_args[0]) == 4
+
+        # Verify column types in order
+        assert isinstance(call_args[0][0], TextColumn)
+        assert isinstance(call_args[0][1], BarColumn)
+        assert isinstance(call_args[0][2], MofNCompleteColumn)  # "5/25" format
+        assert isinstance(call_args[0][3], TaskProgressColumn)  # Percentage
+
 
 class TestWriteResults:
     """Test _write_results method."""
