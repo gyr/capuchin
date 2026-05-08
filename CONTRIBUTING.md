@@ -48,7 +48,21 @@ This project follows TDD practices:
 
 While all quality checks run automatically in CI, you can optionally run them locally for immediate feedback:
 
-#### Run All Checks
+#### Recommended: Use Validation Scripts
+
+Scripts guarantee exact match with CI validation:
+
+```bash
+# Run all CI validation steps:
+./scripts/check.sh
+
+# Auto-fix issues, then validate:
+./scripts/fix.sh
+```
+
+See `scripts/README.md` for details and sync requirements.
+
+#### Alternative: Run Individual Commands
 
 ```bash
 # Format code
@@ -70,6 +84,7 @@ uv run pytest -v --cov=src --cov-report=term --cov-report=xml
 #### One-Liner for All Checks
 
 ```bash
+# Same as ./scripts/check.sh but without the progress messages:
 uv run ruff format src/ tests/ && \
 uv run ruff check src/ tests/ && \
 uv run mypy src/ && \

@@ -101,6 +101,18 @@ tests/
 
 ### Formatting and Linting
 
+**Recommended: Use validation scripts (guaranteed to match CI)**
+
+```bash
+# Validate before committing (runs all 5 CI steps):
+./scripts/check.sh
+
+# Auto-fix formatting/linting, then validate:
+./scripts/fix.sh
+```
+
+**Alternative: Run individual commands**
+
 ```bash
 # Format code
 uv run ruff format src/ tests/
@@ -111,13 +123,16 @@ uv run ruff check src/ tests/ --fix
 # Type checking
 uv run mypy src/
 
-# All checks in sequence (matches CI exactly)
+# All checks in sequence (same as scripts/check.sh)
 uv run ruff format src/ tests/ && \
 uv run ruff check src/ tests/ && \
 uv run mypy src/ && \
 uv run bandit -r src/ && \
 uv run pytest -v --cov=src --cov-report=term --cov-report=xml
 ```
+
+**Source of Truth:** `scripts/check.sh` and `.github/workflows/ci.yml` must stay in sync.
+See `scripts/README.md` for sync requirements.
 
 **Configuration:**
 - Line length: 100 characters
