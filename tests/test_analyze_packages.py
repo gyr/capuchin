@@ -175,9 +175,8 @@ class TestMain:
 
         with patch.object(
             sys, "argv", ["analyze_packages", str(nonexistent)]
-        ):
-            with caplog.at_level(logging.ERROR):
-                result = main()
+        ), caplog.at_level(logging.ERROR):
+            result = main()
 
         assert result == 1
         assert "Source packages file not found" in caplog.text
@@ -196,9 +195,11 @@ class TestMain:
         invalid_file = tmp_path / "invalid.json"
         invalid_file.write_text("not valid json {]")
 
-        with patch.object(sys, "argv", ["analyze_packages", str(invalid_file)]):
-            with caplog.at_level(logging.ERROR):
-                result = main()
+        with (
+            patch.object(sys, "argv", ["analyze_packages", str(invalid_file)]),
+            caplog.at_level(logging.ERROR),
+        ):
+            result = main()
 
         assert result == 1
         assert "Failed to parse source packages file" in caplog.text
@@ -218,9 +219,11 @@ class TestMain:
         with open(invalid_file, "w") as f:
             json.dump({"key": "value"}, f)
 
-        with patch.object(sys, "argv", ["analyze_packages", str(invalid_file)]):
-            with caplog.at_level(logging.ERROR):
-                result = main()
+        with (
+            patch.object(sys, "argv", ["analyze_packages", str(invalid_file)]),
+            caplog.at_level(logging.ERROR),
+        ):
+            result = main()
 
         assert result == 1
         assert "Source packages file must contain a JSON array" in caplog.text
@@ -243,9 +246,8 @@ class TestMain:
 
         with patch.object(
             sys, "argv", ["analyze_packages", str(sample_source_packages_file)]
-        ):
-            with caplog.at_level(logging.ERROR):
-                result = main()
+        ), caplog.at_level(logging.ERROR):
+            result = main()
 
         assert result == 1
         assert "PACKAGE_MONKEY_PATH not set" in caplog.text
@@ -271,9 +273,8 @@ class TestMain:
 
         with patch.object(
             sys, "argv", ["analyze_packages", str(sample_source_packages_file)]
-        ):
-            with caplog.at_level(logging.ERROR):
-                result = main()
+        ), caplog.at_level(logging.ERROR):
+            result = main()
 
         assert result == 1
         assert "Failed to run monkey command" in caplog.text
@@ -415,9 +416,11 @@ class TestMain:
         """Test that errors are logged when file not found."""
         mock_config.get_package_monkey_path.return_value = Path("/opt/monkey")
 
-        with patch.object(sys, "argv", ["analyze_packages", "nonexistent.json"]):
-            with caplog.at_level(logging.ERROR):
-                result = main()
+        with (
+            patch.object(sys, "argv", ["analyze_packages", "nonexistent.json"]),
+            caplog.at_level(logging.ERROR),
+        ):
+            result = main()
 
         assert result == 1
         assert "Source packages file not found" in caplog.text
@@ -438,9 +441,11 @@ class TestMain:
         with open(invalid_file, "w") as f:
             f.write("{invalid json")
 
-        with patch.object(sys, "argv", ["analyze_packages", str(invalid_file)]):
-            with caplog.at_level(logging.ERROR):
-                result = main()
+        with (
+            patch.object(sys, "argv", ["analyze_packages", str(invalid_file)]),
+            caplog.at_level(logging.ERROR),
+        ):
+            result = main()
 
         assert result == 1
         assert "Failed to parse source packages file" in caplog.text
@@ -512,9 +517,8 @@ class TestMain:
             sys,
             "argv",
             ["analyze_packages", str(sample_source_packages_file), "--output-dir", str(tmp_path)],
-        ):
-            with caplog.at_level(logging.INFO):
-                result = main()
+        ), caplog.at_level(logging.INFO):
+            result = main()
 
         assert result == 0
         assert "Analysis complete" in caplog.text

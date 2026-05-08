@@ -61,7 +61,8 @@ class MonkeyParser:
         # Validate header format
         if not lines[0].startswith(self.BUILD_HEADER_PREFIX):
             raise ParseError(
-                f"Invalid buildinfo format: expected '{self.BUILD_HEADER_PREFIX}...' header, got: {lines[0]}"
+                f"Invalid buildinfo format: expected "
+                f"'{self.BUILD_HEADER_PREFIX}...' header, got: {lines[0]}"
             )
 
         packages: list[BinaryPackage] = []

@@ -304,9 +304,11 @@ class TestMain:
         invalid_json = tmp_path / "packages.json"
         invalid_json.write_text("{ invalid json ]")
 
-        with patch("sys.argv", ["query_package", "bash", "--data-dir", str(tmp_path)]):
-            with caplog.at_level(logging.ERROR):
-                result = main()
+        with (
+            patch("sys.argv", ["query_package", "bash", "--data-dir", str(tmp_path)]),
+            caplog.at_level(logging.ERROR),
+        ):
+            result = main()
 
         assert result == 1
         assert "Failed to parse packages.json" in caplog.text
