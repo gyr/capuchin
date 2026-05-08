@@ -104,11 +104,12 @@ uv run ruff check src/ tests/ --fix
 # Type checking
 uv run mypy src/
 
-# All checks in sequence
+# All checks in sequence (matches CI exactly)
 uv run ruff format src/ tests/ && \
 uv run ruff check src/ tests/ && \
 uv run mypy src/ && \
-uv run pytest -v
+uv run bandit -r src/ && \
+uv run pytest -v --cov=src --cov-report=term --cov-report=xml
 ```
 
 **Configuration:**

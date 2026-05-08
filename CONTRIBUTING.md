@@ -60,8 +60,11 @@ uv run ruff check src/ tests/ --fix
 # Type check
 uv run mypy src/
 
+# Security scan
+uv run bandit -r src/
+
 # Run tests with coverage
-uv run pytest -v --cov=src
+uv run pytest -v --cov=src --cov-report=term --cov-report=xml
 ```
 
 #### One-Liner for All Checks
@@ -70,7 +73,8 @@ uv run pytest -v --cov=src
 uv run ruff format src/ tests/ && \
 uv run ruff check src/ tests/ && \
 uv run mypy src/ && \
-uv run pytest -v
+uv run bandit -r src/ && \
+uv run pytest -v --cov=src --cov-report=term --cov-report=xml
 ```
 
 **Note:** These checks are optional for local development. The CI pipeline will automatically run all checks on every push and pull request, so you don't need to run them manually unless you want immediate feedback.
