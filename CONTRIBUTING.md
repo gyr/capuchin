@@ -100,6 +100,12 @@ uv run pytest -v --cov=src --cov-report=term --cov-report=xml
 - Use fixtures for test data
 - Mock external dependencies (subprocess calls)
 
+**Test Isolation:**
+- Always use `@patch("src.analyze_packages.setup_logging")` when testing `main()`
+- Prevents logging side effects that break subsequent tests
+- `tests/conftest.py` provides automatic cleanup (defense-in-depth)
+- See commit bd6388c for details on logging test pollution fix
+
 ## Commit Message Conventions
 
 Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:

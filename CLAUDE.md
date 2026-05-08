@@ -90,6 +90,13 @@ tests/
 - Test both success and error paths
 - Verify logging behavior with `caplog` fixture
 
+**Test Isolation (Critical):**
+- `tests/conftest.py` provides autouse fixture that cleans up logging state after each test
+- Always mock `setup_logging()` in tests that call `main()` to prevent side effects
+- Pattern: `@patch("src.analyze_packages.setup_logging")` decorator
+- Why: Logging is global state - `setup_logging()` modifies logger level/handlers
+- Without mocking: logger level persists across tests, breaking `caplog.at_level(DEBUG)`
+
 ## Code Quality
 
 ### Formatting and Linting
