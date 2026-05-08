@@ -29,9 +29,7 @@ class TestParseArgs:
 
     def test_parse_args_with_monkey_path(self) -> None:
         """Test parsing with custom monkey path."""
-        args = parse_args(
-            ["source_packages.json", "--monkey-path", "/custom/monkey"]
-        )
+        args = parse_args(["source_packages.json", "--monkey-path", "/custom/monkey"])
         assert args.source_packages_file == "source_packages.json"
         assert args.monkey_path == "/custom/monkey"
 
@@ -96,12 +94,14 @@ class TestMain:
             json.dump(data, f)
         return source_file
 
+    @patch("src.analyze_packages.setup_logging")
     @patch("src.analyze_packages.PackageAnalyzer")
     @patch("src.analyze_packages.Config")
     def test_main_success(
         self,
         mock_config: MagicMock,
         mock_analyzer_class: MagicMock,
+        mock_setup_logging: MagicMock,
         sample_source_packages_file: Path,
         tmp_path: Path,
     ) -> None:
@@ -129,10 +129,12 @@ class TestMain:
             ["aaa_base", "bash", "coreutils"], show_progress=True
         )
 
+    @patch("src.analyze_packages.setup_logging")
     @patch("src.analyze_packages.Config")
     def test_main_with_custom_monkey_path(
         self,
         mock_config: MagicMock,
+        mock_setup_logging: MagicMock,
         sample_source_packages_file: Path,
         tmp_path: Path,
     ) -> None:
@@ -173,9 +175,10 @@ class TestMain:
         mock_config.get_package_monkey_path.return_value = Path("/opt/monkey")
         nonexistent = tmp_path / "nonexistent.json"
 
-        with patch.object(
-            sys, "argv", ["analyze_packages", str(nonexistent)]
-        ), caplog.at_level(logging.ERROR):
+        with (
+            patch.object(sys, "argv", ["analyze_packages", str(nonexistent)]),
+            caplog.at_level(logging.ERROR),
+        ):
             result = main()
 
         assert result == 1
@@ -240,13 +243,12 @@ class TestMain:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test main when Config raises an error."""
-        mock_config.get_package_monkey_path.side_effect = ValueError(
-            "PACKAGE_MONKEY_PATH not set"
-        )
+        mock_config.get_package_monkey_path.side_effect = ValueError("PACKAGE_MONKEY_PATH not set")
 
-        with patch.object(
-            sys, "argv", ["analyze_packages", str(sample_source_packages_file)]
-        ), caplog.at_level(logging.ERROR):
+        with (
+            patch.object(sys, "argv", ["analyze_packages", str(sample_source_packages_file)]),
+            caplog.at_level(logging.ERROR),
+        ):
             result = main()
 
         assert result == 1
@@ -267,24 +269,25 @@ class TestMain:
         mock_config.get_package_monkey_path.return_value = Path("/opt/monkey")
         mock_analyzer = MagicMock()
         mock_analyzer_class.return_value = mock_analyzer
-        mock_analyzer.analyze_and_write.side_effect = RuntimeError(
-            "Failed to run monkey command"
-        )
+        mock_analyzer.analyze_and_write.side_effect = RuntimeError("Failed to run monkey command")
 
-        with patch.object(
-            sys, "argv", ["analyze_packages", str(sample_source_packages_file)]
-        ), caplog.at_level(logging.ERROR):
+        with (
+            patch.object(sys, "argv", ["analyze_packages", str(sample_source_packages_file)]),
+            caplog.at_level(logging.ERROR),
+        ):
             result = main()
 
         assert result == 1
         assert "Failed to run monkey command" in caplog.text
 
+    @patch("src.analyze_packages.setup_logging")
     @patch("src.analyze_packages.PackageAnalyzer")
     @patch("src.analyze_packages.Config")
     def test_main_empty_package_list(
         self,
         mock_config: MagicMock,
         mock_analyzer_class: MagicMock,
+        mock_setup_logging: MagicMock,
         tmp_path: Path,
     ) -> None:
         """Test main with empty package list (should still succeed)."""
@@ -320,9 +323,7 @@ class TestMain:
         with patch.object(sys, "argv", ["analyze_packages", str(sample_source_packages_file)]):
             main()
 
-        mock_setup_logging.assert_called_once_with(
-            verbose=False, log_file=None, quiet=False
-        )
+        mock_setup_logging.assert_called_once_with(verbose=False, log_file=None, quiet=False)
 
     @patch("src.analyze_packages.setup_logging")
     @patch("src.analyze_packages.PackageAnalyzer")
@@ -344,9 +345,7 @@ class TestMain:
         ):
             main()
 
-        mock_setup_logging.assert_called_once_with(
-            verbose=True, log_file=None, quiet=False
-        )
+        mock_setup_logging.assert_called_once_with(verbose=True, log_file=None, quiet=False)
 
     @patch("src.analyze_packages.setup_logging")
     @patch("src.analyze_packages.PackageAnalyzer")
@@ -368,9 +367,7 @@ class TestMain:
         ):
             main()
 
-        mock_setup_logging.assert_called_once_with(
-            verbose=False, log_file=None, quiet=True
-        )
+        mock_setup_logging.assert_called_once_with(verbose=False, log_file=None, quiet=True)
 
     @patch("src.analyze_packages.setup_logging")
     @patch("src.analyze_packages.PackageAnalyzer")
@@ -401,9 +398,7 @@ class TestMain:
         ):
             main()
 
-        mock_setup_logging.assert_called_once_with(
-            verbose=False, log_file=log_file, quiet=False
-        )
+        mock_setup_logging.assert_called_once_with(verbose=False, log_file=log_file, quiet=False)
 
     @patch("src.analyze_packages.setup_logging")
     @patch("src.analyze_packages.Config")
@@ -513,11 +508,19 @@ class TestMain:
         mock_analyzer = MagicMock()
         mock_analyzer_class.return_value = mock_analyzer
 
-        with patch.object(
-            sys,
-            "argv",
-            ["analyze_packages", str(sample_source_packages_file), "--output-dir", str(tmp_path)],
-        ), caplog.at_level(logging.INFO):
+        with (
+            patch.object(
+                sys,
+                "argv",
+                [
+                    "analyze_packages",
+                    str(sample_source_packages_file),
+                    "--output-dir",
+                    str(tmp_path),
+                ],
+            ),
+            caplog.at_level(logging.INFO),
+        ):
             result = main()
 
         assert result == 0
