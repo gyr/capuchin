@@ -97,18 +97,14 @@ def main() -> int:
 
         # Validate that it's a list
         if not isinstance(source_packages, list):
-            logger.error(
-                "Source packages file must contain a JSON array of package names"
-            )
+            logger.error("Source packages file must contain a JSON array of package names")
             return 1
 
         # Get monkey path (from CLI arg or config)
         monkey_path = args.monkey_path or str(Config.get_package_monkey_path())
 
         # Create analyzer and run analysis
-        analyzer = PackageAnalyzer(
-            monkey_path=monkey_path, output_dir=args.output_dir
-        )
+        analyzer = PackageAnalyzer(monkey_path=monkey_path, output_dir=args.output_dir)
         analyzer.analyze_and_write(source_packages, show_progress=not args.quiet)
 
         output_file = args.output_dir / "packages.json"

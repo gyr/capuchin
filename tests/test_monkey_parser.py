@@ -20,9 +20,7 @@ class TestMonkeyParser:
         """Get the fixtures directory path."""
         return Path(__file__).parent / "fixtures"
 
-    def test_parse_buildinfo_simple(
-        self, parser: MonkeyParser, fixtures_dir: Path
-    ) -> None:
+    def test_parse_buildinfo_simple(self, parser: MonkeyParser, fixtures_dir: Path) -> None:
         """Test parsing buildinfo with simple package structure."""
         buildinfo_output = (fixtures_dir / "buildinfo_simple.txt").read_text()
         packages = parser.parse_buildinfo(buildinfo_output)
@@ -76,18 +74,14 @@ class TestMonkeyParser:
         with pytest.raises(ParseError, match="Invalid buildinfo format"):
             parser.parse_buildinfo(malformed)
 
-    def test_parse_buildinfo_not_found(
-        self, parser: MonkeyParser, fixtures_dir: Path
-    ) -> None:
+    def test_parse_buildinfo_not_found(self, parser: MonkeyParser, fixtures_dir: Path) -> None:
         """Test parsing buildinfo for non-existent source package."""
         buildinfo_output = (fixtures_dir / "buildinfo_not_found.txt").read_text()
         packages = parser.parse_buildinfo(buildinfo_output)
         # Should return empty list for non-existent packages
         assert packages == []
 
-    def test_parse_ex_simple(
-        self, parser: MonkeyParser, fixtures_dir: Path
-    ) -> None:
+    def test_parse_ex_simple(self, parser: MonkeyParser, fixtures_dir: Path) -> None:
         """Test parsing simple ex output with multiple media."""
         ex_output = (fixtures_dir / "ex_simple.txt").read_text()
         included, required_by_rpm = parser.parse_ex(ex_output)
@@ -98,9 +92,7 @@ class TestMonkeyParser:
         # sleha_16.1 has no required_by_rpm so only one value
         assert "fontconfig-devel" in required_by_rpm
 
-    def test_parse_ex_multiple_paths(
-        self, parser: MonkeyParser, fixtures_dir: Path
-    ) -> None:
+    def test_parse_ex_multiple_paths(self, parser: MonkeyParser, fixtures_dir: Path) -> None:
         """Test parsing ex output with package that has required_by_rpm."""
         ex_output = (fixtures_dir / "ex_multiple_paths.txt").read_text()
         included, required_by_rpm = parser.parse_ex(ex_output)
@@ -111,9 +103,7 @@ class TestMonkeyParser:
         assert "qa_test_fwts" in required_by_rpm
         assert len(required_by_rpm) == 1
 
-    def test_parse_ex_not_in_media(
-        self, parser: MonkeyParser, fixtures_dir: Path
-    ) -> None:
+    def test_parse_ex_not_in_media(self, parser: MonkeyParser, fixtures_dir: Path) -> None:
         """Test parsing empty ex output (package not in media)."""
         ex_output = (fixtures_dir / "ex_not_in_media.txt").read_text()
         included, required_by_rpm = parser.parse_ex(ex_output)
@@ -136,9 +126,7 @@ class TestMonkeyParser:
         assert included is False
         assert required_by_rpm == []
 
-    def test_parse_ex_spurious_decision(
-        self, parser: MonkeyParser, fixtures_dir: Path
-    ) -> None:
+    def test_parse_ex_spurious_decision(self, parser: MonkeyParser, fixtures_dir: Path) -> None:
         """Test parsing ex output with spurious decision (non-existent package)."""
         ex_output = (fixtures_dir / "ex_spurious.txt").read_text()
         included, required_by_rpm = parser.parse_ex(ex_output)
@@ -147,9 +135,7 @@ class TestMonkeyParser:
         assert included is False
         assert required_by_rpm == []
 
-    def test_parse_buildinfo_multiple_packages(
-        self, parser: MonkeyParser
-    ) -> None:
+    def test_parse_buildinfo_multiple_packages(self, parser: MonkeyParser) -> None:
         """Test parsing multiple packages."""
         buildinfo = """Build test (2 rpms)
 test-package-1 (TestEpic)

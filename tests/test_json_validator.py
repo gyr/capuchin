@@ -77,17 +77,11 @@ class TestJsonValidator:
         json_file.write_text('{"key": "value"}')
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=1, stderr="Error: Invalid JSON"
-            )
-            with pytest.raises(
-                ValidationError, match="Validation failed: Error: Invalid JSON"
-            ):
+            mock_run.return_value = MagicMock(returncode=1, stderr="Error: Invalid JSON")
+            with pytest.raises(ValidationError, match="Validation failed: Error: Invalid JSON"):
                 validator.validate(json_file)
 
-    def test_validate_subprocess_error(
-        self, tmp_path: Path, mock_script: Path
-    ) -> None:
+    def test_validate_subprocess_error(self, tmp_path: Path, mock_script: Path) -> None:
         """Test validation when subprocess raises an exception."""
         validator = JsonValidator(script_path=mock_script)
         json_file = tmp_path / "test.json"
@@ -119,7 +113,7 @@ class TestJsonValidator:
         """Test validation of JSON array."""
         validator = JsonValidator(script_path=mock_script)
         json_file = tmp_path / "array.json"
-        json_file.write_text('[1, 2, 3]')
+        json_file.write_text("[1, 2, 3]")
 
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)

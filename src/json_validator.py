@@ -1,6 +1,6 @@
 """JSON validation using validate_json.sh script."""
 
-import subprocess
+import subprocess  # nosec B404 - subprocess needed for external script validation
 from pathlib import Path
 
 
@@ -35,9 +35,7 @@ class JsonValidator:
 
         # Check if script exists
         if not self.script_path.exists():
-            raise ValidationError(
-                f"Validation script not found: {self.script_path}"
-            )
+            raise ValidationError(f"Validation script not found: {self.script_path}")
 
         # Check if JSON file exists
         if not json_path.exists():
@@ -45,7 +43,7 @@ class JsonValidator:
 
         # Run the validation script
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 - controlled input, validation script path
                 [str(self.script_path), str(json_path)],
                 capture_output=True,
                 text=True,

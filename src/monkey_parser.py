@@ -163,4 +163,3 @@ class MonkeyParser:
                     required_by_rpm_set.add(rpm_name)
 
         return (found_in_media, sorted(required_by_rpm_set))
-

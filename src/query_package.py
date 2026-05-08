@@ -20,9 +20,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     Returns:
         Parsed arguments namespace.
     """
-    parser = argparse.ArgumentParser(
-        description="Query package information from packages.json."
-    )
+    parser = argparse.ArgumentParser(description="Query package information from packages.json.")
 
     parser.add_argument(
         "package_name",
@@ -63,7 +61,8 @@ def load_packages(data_dir: Path) -> dict[str, dict[str, dict[str, Any]]]:
         raise FileNotFoundError(f"packages.json not found in {data_dir}")
 
     with open(packages_file) as f:
-        return json.load(f)
+        data: dict[str, dict[str, dict[str, Any]]] = json.load(f)
+        return data
 
 
 def query_package(
@@ -122,20 +121,20 @@ def format_human_readable(query_result: dict[str, Any]) -> str:
         lines = [f"Source package: {query_result['source_package']}"]
         lines.append("Binary packages:")
         binaries = query_result["binaries"]
-        for binary_name, binary_data in binaries.items():  # type: ignore
+        for binary_name, binary_data in binaries.items():
             lines.append(f"  - {binary_name}")
-            lines.append(f"      required_by: {binary_data['required_by']}")  # type: ignore
-            lines.append(f"      included: {binary_data['included']}")  # type: ignore
-            lines.append(f"      required_by_rpm: {binary_data['required_by_rpm']}")  # type: ignore
+            lines.append(f"      required_by: {binary_data['required_by']}")
+            lines.append(f"      included: {binary_data['included']}")
+            lines.append(f"      required_by_rpm: {binary_data['required_by_rpm']}")
         return "\n".join(lines)
 
     elif result_type == "binary":
         lines = [f"Binary package: {query_result['binary_package']}"]
         lines.append(f"Source package: {query_result['source_package']}")
         data = query_result["data"]
-        lines.append(f"  required_by: {data['required_by']}")  # type: ignore
-        lines.append(f"  included: {data['included']}")  # type: ignore
-        lines.append(f"  required_by_rpm: {data['required_by_rpm']}")  # type: ignore
+        lines.append(f"  required_by: {data['required_by']}")
+        lines.append(f"  included: {data['included']}")
+        lines.append(f"  required_by_rpm: {data['required_by_rpm']}")
         return "\n".join(lines)
 
     else:  # not_found

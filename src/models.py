@@ -30,7 +30,4 @@ class SourcePackageData:
         Returns only the binaries dict (without source_name key),
         since source_name will be the key in the final JSON output.
         """
-        return {
-            name: binary.to_dict()
-            for name, binary in self.binaries.items()
-        }
+        return {name: binary.to_dict() for name, binary in self.binaries.items()}

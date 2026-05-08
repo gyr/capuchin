@@ -56,9 +56,7 @@ class TestPackageAnalyzerInit:
 
     def test_init_with_custom_output_dir(self, tmp_path: Path) -> None:
         """Test initialization with custom output directory."""
-        analyzer = PackageAnalyzer(
-            monkey_path="/opt/monkey", output_dir=tmp_path
-        )
+        analyzer = PackageAnalyzer(monkey_path="/opt/monkey", output_dir=tmp_path)
         assert analyzer.monkey_path == "/opt/monkey"
         assert analyzer.output_dir == tmp_path
 
@@ -71,9 +69,7 @@ class TestCommandExecution:
         self, mock_run: MagicMock, analyzer: PackageAnalyzer, sample_buildinfo_output: str
     ) -> None:
         """Test successful buildinfo command execution."""
-        mock_run.return_value = MagicMock(
-            stdout=sample_buildinfo_output, returncode=0
-        )
+        mock_run.return_value = MagicMock(stdout=sample_buildinfo_output, returncode=0)
 
         result = analyzer._run_buildinfo("bash")
 
@@ -99,9 +95,7 @@ class TestCommandExecution:
         self, mock_run: MagicMock, analyzer: PackageAnalyzer, sample_ex_bash_included: str
     ) -> None:
         """Test successful ex command execution (monkey ex outputs to stderr)."""
-        mock_run.return_value = MagicMock(
-            stdout="", stderr=sample_ex_bash_included, returncode=0
-        )
+        mock_run.return_value = MagicMock(stdout="", stderr=sample_ex_bash_included, returncode=0)
 
         result = analyzer._run_ex("bash")
 
@@ -113,9 +107,7 @@ class TestCommandExecution:
         assert kwargs["cwd"] == analyzer.monkey_path
 
     @patch("subprocess.run")
-    def test_run_ex_command_failure(
-        self, mock_run: MagicMock, analyzer: PackageAnalyzer
-    ) -> None:
+    def test_run_ex_command_failure(self, mock_run: MagicMock, analyzer: PackageAnalyzer) -> None:
         """Test ex command failure."""
         mock_run.side_effect = subprocess.CalledProcessError(1, "monkey")
 
@@ -433,9 +425,7 @@ class TestLogging:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test that buildinfo command is logged at DEBUG level."""
-        mock_run.return_value = MagicMock(
-            stdout=sample_buildinfo_output, returncode=0
-        )
+        mock_run.return_value = MagicMock(stdout=sample_buildinfo_output, returncode=0)
 
         with caplog.at_level(logging.DEBUG):
             analyzer._run_buildinfo("bash")
@@ -451,9 +441,7 @@ class TestLogging:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test that ex command is logged at DEBUG level."""
-        mock_run.return_value = MagicMock(
-            stdout="", stderr=sample_ex_bash_included, returncode=0
-        )
+        mock_run.return_value = MagicMock(stdout="", stderr=sample_ex_bash_included, returncode=0)
 
         with caplog.at_level(logging.DEBUG):
             analyzer._run_ex("bash")

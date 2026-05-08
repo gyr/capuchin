@@ -59,8 +59,6 @@ class TestConfig:
         with (
             patch.dict(os.environ, {"PACKAGE_MONKEY_PATH": custom_path}),
             patch("pathlib.Path.is_dir", return_value=False),
-            pytest.raises(
-                ValueError, match=f"PACKAGE_MONKEY_PATH does not exist: {custom_path}"
-            ),
+            pytest.raises(ValueError, match=f"PACKAGE_MONKEY_PATH does not exist: {custom_path}"),
         ):
             Config.get_package_monkey_path()

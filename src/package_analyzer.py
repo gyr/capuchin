@@ -2,7 +2,7 @@
 
 import json
 import logging
-import subprocess
+import subprocess  # nosec B404 - subprocess needed for external monkey CLI tool
 import time
 from pathlib import Path
 
@@ -23,9 +23,7 @@ logger = logging.getLogger(__name__)
 class PackageAnalyzer:
     """Orchestrates package analysis workflow."""
 
-    def __init__(
-        self, monkey_path: str, output_dir: Path | None = None
-    ) -> None:
+    def __init__(self, monkey_path: str, output_dir: Path | None = None) -> None:
         """Initialize PackageAnalyzer.
 
         Args:
@@ -52,7 +50,7 @@ class PackageAnalyzer:
         logger.debug("Running: %s", " ".join(cmd))
 
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 - controlled input, trusted monkey CLI
                 cmd,
                 capture_output=True,
                 text=True,
@@ -62,9 +60,7 @@ class PackageAnalyzer:
             return result.stdout
         except subprocess.CalledProcessError as e:
             logger.error("Failed to run monkey buildinfo for %s: %s", source_package, e)
-            raise RuntimeError(
-                f"Failed to run monkey buildinfo for {source_package}: {e}"
-            ) from e
+            raise RuntimeError(f"Failed to run monkey buildinfo for {source_package}: {e}") from e
 
     def _run_ex(self, binary_package: str) -> str:
         """Execute monkey ex command.
@@ -84,7 +80,7 @@ class PackageAnalyzer:
         logger.debug("Running: %s", " ".join(cmd))
 
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 - controlled input, trusted monkey CLI
                 cmd,
                 capture_output=True,
                 text=True,
@@ -94,9 +90,7 @@ class PackageAnalyzer:
             return result.stderr
         except subprocess.CalledProcessError as e:
             logger.error("Failed to run monkey ex for %s: %s", binary_package, e)
-            raise RuntimeError(
-                f"Failed to run monkey ex for {binary_package}: {e}"
-            ) from e
+            raise RuntimeError(f"Failed to run monkey ex for {binary_package}: {e}") from e
 
     def analyze_source_package(self, source_package: str) -> SourcePackageData:
         """Analyze a single source package.
@@ -189,16 +183,13 @@ class PackageAnalyzer:
 
         # Build JSON structure: {source_name: {binary_name: binary_data}}
         output_dict = {
-            source_name: source_data.to_dict()
-            for source_name, source_data in packages_data.items()
+            source_name: source_data.to_dict() for source_name, source_data in packages_data.items()
         }
 
         with open(output_path, "w") as f:
             json.dump(output_dict, f, indent=2)
 
-    def analyze_and_write(
-        self, source_packages: list[str], show_progress: bool = True
-    ) -> None:
+    def analyze_and_write(self, source_packages: list[str], show_progress: bool = True) -> None:
         """Analyze source packages and write results to JSON file.
 
         Args:
