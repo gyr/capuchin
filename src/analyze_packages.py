@@ -6,9 +6,9 @@ import logging
 import sys
 from pathlib import Path
 
+from src.analyzer import Capuchin
 from src.config import Config
 from src.logging_config import setup_logging
-from src.package_analyzer import Capuchin
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.package_analyzer import Capuchin
+from src.analyzer import Capuchin
 
 
 @pytest.fixture
@@ -201,7 +201,7 @@ class TestAnalyzePackages:
         assert "grep" in grep_source.binaries
         assert grep_source.binaries["grep"].included is False
 
-    @patch("src.package_analyzer.Progress")
+    @patch("src.analyzer.Progress")
     @patch.object(Capuchin, "analyze_source_package")
     def test_analyze_packages_with_progress_bar(
         self, mock_analyze: MagicMock, mock_progress_class: MagicMock, analyzer: Capuchin
@@ -235,7 +235,7 @@ class TestAnalyzePackages:
         assert mock_progress.update.call_count == 3
         mock_progress.update.assert_called_with(mock_task_id, advance=1)
 
-    @patch("src.package_analyzer.Progress")
+    @patch("src.analyzer.Progress")
     @patch.object(Capuchin, "analyze_source_package")
     def test_analyze_packages_without_progress_bar(
         self, mock_analyze: MagicMock, mock_progress_class: MagicMock, analyzer: Capuchin
@@ -255,7 +255,7 @@ class TestAnalyzePackages:
         # Verify Progress was NOT created
         mock_progress_class.assert_not_called()
 
-    @patch("src.package_analyzer.Progress")
+    @patch("src.analyzer.Progress")
     @patch.object(Capuchin, "analyze_source_package")
     def test_progress_bar_uses_count_based_columns(
         self, mock_analyze: MagicMock, mock_progress_class: MagicMock, analyzer: Capuchin
