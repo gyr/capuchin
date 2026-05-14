@@ -1,4 +1,4 @@
-"""Tests for PackageAnalyzer."""
+"""Tests for Capuchin."""
 
 import json
 import logging
@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.package_analyzer import PackageAnalyzer
+from src.package_analyzer import Capuchin
 
 
 @pytest.fixture
@@ -39,24 +39,24 @@ def sample_ex_bash_doc_not_included() -> str:
 
 
 @pytest.fixture
-def analyzer(tmp_path: Path) -> PackageAnalyzer:
-    """Create PackageAnalyzer instance for testing."""
+def analyzer(tmp_path: Path) -> Capuchin:
+    """Create Capuchin instance for testing."""
     monkey_path = "/opt/monkey"
-    return PackageAnalyzer(monkey_path=monkey_path, output_dir=tmp_path)
+    return Capuchin(monkey_path=monkey_path, output_dir=tmp_path)
 
 
-class TestPackageAnalyzerInit:
-    """Test PackageAnalyzer initialization."""
+class TestCapuchinInit:
+    """Test Capuchin initialization."""
 
     def test_init_with_defaults(self, tmp_path: Path) -> None:
         """Test initialization with default output directory."""
-        analyzer = PackageAnalyzer(monkey_path="/opt/monkey")
+        analyzer = Capuchin(monkey_path="/opt/monkey")
         assert analyzer.monkey_path == "/opt/monkey"
         assert analyzer.output_dir == Path.cwd()
 
     def test_init_with_custom_output_dir(self, tmp_path: Path) -> None:
         """Test initialization with custom output directory."""
-        analyzer = PackageAnalyzer(monkey_path="/opt/monkey", output_dir=tmp_path)
+        analyzer = Capuchin(monkey_path="/opt/monkey", output_dir=tmp_path)
         assert analyzer.monkey_path == "/opt/monkey"
         assert analyzer.output_dir == tmp_path
 
@@ -66,7 +66,7 @@ class TestCommandExecution:
 
     @patch("subprocess.run")
     def test_run_buildinfo_success(
-        self, mock_run: MagicMock, analyzer: PackageAnalyzer, sample_buildinfo_output: str
+        self, mock_run: MagicMock, analyzer: Capuchin, sample_buildinfo_output: str
     ) -> None:
         """Test successful buildinfo command execution."""
         mock_run.return_value = MagicMock(stdout=sample_buildinfo_output, returncode=0)
@@ -81,9 +81,7 @@ class TestCommandExecution:
         assert kwargs["cwd"] == analyzer.monkey_path
 
     @patch("subprocess.run")
-    def test_run_buildinfo_command_failure(
-        self, mock_run: MagicMock, analyzer: PackageAnalyzer
-    ) -> None:
+    def test_run_buildinfo_command_failure(self, mock_run: MagicMock, analyzer: Capuchin) -> None:
         """Test buildinfo command failure."""
         mock_run.side_effect = subprocess.CalledProcessError(1, "monkey")
 
@@ -92,7 +90,7 @@ class TestCommandExecution:
 
     @patch("subprocess.run")
     def test_run_ex_success(
-        self, mock_run: MagicMock, analyzer: PackageAnalyzer, sample_ex_bash_included: str
+        self, mock_run: MagicMock, analyzer: Capuchin, sample_ex_bash_included: str
     ) -> None:
         """Test successful ex command execution (monkey ex outputs to stderr)."""
         mock_run.return_value = MagicMock(stdout="", stderr=sample_ex_bash_included, returncode=0)
@@ -107,7 +105,7 @@ class TestCommandExecution:
         assert kwargs["cwd"] == analyzer.monkey_path
 
     @patch("subprocess.run")
-    def test_run_ex_command_failure(self, mock_run: MagicMock, analyzer: PackageAnalyzer) -> None:
+    def test_run_ex_command_failure(self, mock_run: MagicMock, analyzer: Capuchin) -> None:
         """Test ex command failure."""
         mock_run.side_effect = subprocess.CalledProcessError(1, "monkey")
 
@@ -118,13 +116,13 @@ class TestCommandExecution:
 class TestAnalyzeSourcePackage:
     """Test analyze_source_package method."""
 
-    @patch.object(PackageAnalyzer, "_run_ex")
-    @patch.object(PackageAnalyzer, "_run_buildinfo")
+    @patch.object(Capuchin, "_run_ex")
+    @patch.object(Capuchin, "_run_buildinfo")
     def test_analyze_source_package(
         self,
         mock_buildinfo: MagicMock,
         mock_ex: MagicMock,
-        analyzer: PackageAnalyzer,
+        analyzer: Capuchin,
         sample_buildinfo_output: str,
         sample_ex_bash_included: str,
         sample_ex_bash_doc_not_included: str,
@@ -159,10 +157,8 @@ class TestAnalyzeSourcePackage:
 class TestAnalyzePackages:
     """Test analyze_packages method."""
 
-    @patch.object(PackageAnalyzer, "analyze_source_package")
-    def test_analyze_multiple_packages(
-        self, mock_analyze: MagicMock, analyzer: PackageAnalyzer
-    ) -> None:
+    @patch.object(Capuchin, "analyze_source_package")
+    def test_analyze_multiple_packages(self, mock_analyze: MagicMock, analyzer: Capuchin) -> None:
         """Test analyzing multiple source packages."""
         from src.models import BinaryPackageData, SourcePackageData
 
@@ -206,9 +202,9 @@ class TestAnalyzePackages:
         assert grep_source.binaries["grep"].included is False
 
     @patch("src.package_analyzer.Progress")
-    @patch.object(PackageAnalyzer, "analyze_source_package")
+    @patch.object(Capuchin, "analyze_source_package")
     def test_analyze_packages_with_progress_bar(
-        self, mock_analyze: MagicMock, mock_progress_class: MagicMock, analyzer: PackageAnalyzer
+        self, mock_analyze: MagicMock, mock_progress_class: MagicMock, analyzer: Capuchin
     ) -> None:
         """Test that progress bar is displayed during analysis."""
         from src.models import BinaryPackageData, SourcePackageData
@@ -240,9 +236,9 @@ class TestAnalyzePackages:
         mock_progress.update.assert_called_with(mock_task_id, advance=1)
 
     @patch("src.package_analyzer.Progress")
-    @patch.object(PackageAnalyzer, "analyze_source_package")
+    @patch.object(Capuchin, "analyze_source_package")
     def test_analyze_packages_without_progress_bar(
-        self, mock_analyze: MagicMock, mock_progress_class: MagicMock, analyzer: PackageAnalyzer
+        self, mock_analyze: MagicMock, mock_progress_class: MagicMock, analyzer: Capuchin
     ) -> None:
         """Test that progress bar is not displayed when show_progress=False."""
         from src.models import BinaryPackageData, SourcePackageData
@@ -260,9 +256,9 @@ class TestAnalyzePackages:
         mock_progress_class.assert_not_called()
 
     @patch("src.package_analyzer.Progress")
-    @patch.object(PackageAnalyzer, "analyze_source_package")
+    @patch.object(Capuchin, "analyze_source_package")
     def test_progress_bar_uses_count_based_columns(
-        self, mock_analyze: MagicMock, mock_progress_class: MagicMock, analyzer: PackageAnalyzer
+        self, mock_analyze: MagicMock, mock_progress_class: MagicMock, analyzer: Capuchin
     ) -> None:
         """Test that progress bar uses count-based columns, not time remaining."""
         from rich.progress import (
@@ -299,7 +295,7 @@ class TestAnalyzePackages:
 class TestWriteResults:
     """Test _write_results method."""
 
-    def test_write_results_single_file(self, analyzer: PackageAnalyzer) -> None:
+    def test_write_results_single_file(self, analyzer: Capuchin) -> None:
         """Test writing results to single packages.json file."""
         from src.models import BinaryPackageData, SourcePackageData
 
@@ -355,13 +351,13 @@ class TestWriteResults:
 class TestAnalyzeAndWrite:
     """Test analyze_and_write method."""
 
-    @patch.object(PackageAnalyzer, "_write_results")
-    @patch.object(PackageAnalyzer, "analyze_packages")
+    @patch.object(Capuchin, "_write_results")
+    @patch.object(Capuchin, "analyze_packages")
     def test_analyze_and_write(
         self,
         mock_analyze: MagicMock,
         mock_write: MagicMock,
-        analyzer: PackageAnalyzer,
+        analyzer: Capuchin,
     ) -> None:
         """Test analyze_and_write orchestration."""
         mock_packages_data = {"bash": MagicMock()}
@@ -374,15 +370,15 @@ class TestAnalyzeAndWrite:
 
 
 class TestLogging:
-    """Test logging behavior in PackageAnalyzer."""
+    """Test logging behavior in Capuchin."""
 
-    @patch.object(PackageAnalyzer, "_run_buildinfo")
-    @patch.object(PackageAnalyzer, "_run_ex")
+    @patch.object(Capuchin, "_run_buildinfo")
+    @patch.object(Capuchin, "_run_ex")
     def test_analyze_source_package_logs_start(
         self,
         mock_ex: MagicMock,
         mock_buildinfo: MagicMock,
-        analyzer: PackageAnalyzer,
+        analyzer: Capuchin,
         sample_buildinfo_output: str,
         sample_ex_bash_included: str,
         caplog: pytest.LogCaptureFixture,
@@ -396,13 +392,13 @@ class TestLogging:
 
         assert "Analyzing source package: bash" in caplog.text
 
-    @patch.object(PackageAnalyzer, "_run_buildinfo")
-    @patch.object(PackageAnalyzer, "_run_ex")
+    @patch.object(Capuchin, "_run_buildinfo")
+    @patch.object(Capuchin, "_run_ex")
     def test_analyze_source_package_logs_binary_count(
         self,
         mock_ex: MagicMock,
         mock_buildinfo: MagicMock,
-        analyzer: PackageAnalyzer,
+        analyzer: Capuchin,
         sample_buildinfo_output: str,
         sample_ex_bash_included: str,
         caplog: pytest.LogCaptureFixture,
@@ -420,7 +416,7 @@ class TestLogging:
     def test_run_buildinfo_logs_command(
         self,
         mock_run: MagicMock,
-        analyzer: PackageAnalyzer,
+        analyzer: Capuchin,
         sample_buildinfo_output: str,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -436,7 +432,7 @@ class TestLogging:
     def test_run_ex_logs_command(
         self,
         mock_run: MagicMock,
-        analyzer: PackageAnalyzer,
+        analyzer: Capuchin,
         sample_ex_bash_included: str,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -450,7 +446,7 @@ class TestLogging:
 
     def test_analyze_packages_logs_total_count(
         self,
-        analyzer: PackageAnalyzer,
+        analyzer: Capuchin,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test that total package count is logged."""
@@ -464,7 +460,7 @@ class TestLogging:
 
     def test_analyze_packages_logs_completion(
         self,
-        analyzer: PackageAnalyzer,
+        analyzer: Capuchin,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test that completion is logged with timing."""

@@ -20,11 +20,11 @@ from src.monkey_parser import MonkeyParser
 logger = logging.getLogger(__name__)
 
 
-class PackageAnalyzer:
+class Capuchin:
     """Orchestrates package analysis workflow."""
 
     def __init__(self, monkey_path: str, output_dir: Path | None = None) -> None:
-        """Initialize PackageAnalyzer.
+        """Initialize Capuchin.
 
         Args:
             monkey_path: Path to the monkey executable directory.

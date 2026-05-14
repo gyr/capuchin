@@ -95,7 +95,7 @@ class TestMain:
         return source_file
 
     @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Capuchin")
     @patch("src.analyze_packages.Config")
     def test_main_success(
         self,
@@ -139,7 +139,7 @@ class TestMain:
         tmp_path: Path,
     ) -> None:
         """Test main with custom monkey path (should not call Config)."""
-        with patch("src.analyze_packages.PackageAnalyzer") as mock_analyzer_class:
+        with patch("src.analyze_packages.Capuchin") as mock_analyzer_class:
             mock_analyzer = MagicMock()
             mock_analyzer_class.return_value = mock_analyzer
 
@@ -232,7 +232,7 @@ class TestMain:
         assert "Source packages file must contain a JSON array" in caplog.text
 
     @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Capuchin")
     @patch("src.analyze_packages.Config")
     def test_main_config_error(
         self,
@@ -255,7 +255,7 @@ class TestMain:
         assert "PACKAGE_MONKEY_PATH not set" in caplog.text
 
     @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Capuchin")
     @patch("src.analyze_packages.Config")
     def test_main_analyzer_error(
         self,
@@ -265,7 +265,7 @@ class TestMain:
         sample_source_packages_file: Path,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test main when PackageAnalyzer raises an error."""
+        """Test main when Capuchin raises an error."""
         mock_config.get_package_monkey_path.return_value = Path("/opt/monkey")
         mock_analyzer = MagicMock()
         mock_analyzer_class.return_value = mock_analyzer
@@ -281,7 +281,7 @@ class TestMain:
         assert "Failed to run monkey command" in caplog.text
 
     @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Capuchin")
     @patch("src.analyze_packages.Config")
     def test_main_empty_package_list(
         self,
@@ -306,7 +306,7 @@ class TestMain:
         mock_analyzer.analyze_and_write.assert_called_once_with([], show_progress=True)
 
     @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Capuchin")
     @patch("src.analyze_packages.Config")
     def test_main_calls_setup_logging_default(
         self,
@@ -326,7 +326,7 @@ class TestMain:
         mock_setup_logging.assert_called_once_with(verbose=False, log_file=None, quiet=False)
 
     @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Capuchin")
     @patch("src.analyze_packages.Config")
     def test_main_calls_setup_logging_verbose(
         self,
@@ -348,7 +348,7 @@ class TestMain:
         mock_setup_logging.assert_called_once_with(verbose=True, log_file=None, quiet=False)
 
     @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Capuchin")
     @patch("src.analyze_packages.Config")
     def test_main_calls_setup_logging_quiet(
         self,
@@ -370,7 +370,7 @@ class TestMain:
         mock_setup_logging.assert_called_once_with(verbose=False, log_file=None, quiet=True)
 
     @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Capuchin")
     @patch("src.analyze_packages.Config")
     def test_main_calls_setup_logging_with_log_file(
         self,
@@ -446,7 +446,7 @@ class TestMain:
         assert "Failed to parse source packages file" in caplog.text
 
     @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Capuchin")
     @patch("src.analyze_packages.Config")
     def test_main_progress_bar_enabled_by_default(
         self,
@@ -469,7 +469,7 @@ class TestMain:
         assert call_args[1]["show_progress"] is True
 
     @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Capuchin")
     @patch("src.analyze_packages.Config")
     def test_main_quiet_disables_progress_bar(
         self,
@@ -493,7 +493,7 @@ class TestMain:
         call_args = mock_analyzer.analyze_and_write.call_args
         assert call_args[1]["show_progress"] is False
 
-    @patch("src.analyze_packages.PackageAnalyzer")
+    @patch("src.analyze_packages.Capuchin")
     @patch("src.analyze_packages.Config")
     def test_main_logs_success_message(
         self,

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from src.config import Config
 from src.logging_config import setup_logging
-from src.package_analyzer import PackageAnalyzer
+from src.package_analyzer import Capuchin
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ def main() -> int:
         monkey_path = args.monkey_path or str(Config.get_package_monkey_path())
 
         # Create analyzer and run analysis
-        analyzer = PackageAnalyzer(monkey_path=monkey_path, output_dir=args.output_dir)
+        analyzer = Capuchin(monkey_path=monkey_path, output_dir=args.output_dir)
         analyzer.analyze_and_write(source_packages, show_progress=not args.quiet)
 
         output_file = args.output_dir / "packages.json"
