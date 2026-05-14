@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Package Analyzer is designed to extract and analyze package dependency information from the `monkey` CLI tool. It follows a modular architecture with clear separation of concerns.
+Capuchin is designed to extract and analyze package dependency information from the `monkey` CLI tool. It follows a modular architecture with clear separation of concerns.
 
 ## High-Level Design
 
@@ -14,7 +14,7 @@ The Package Analyzer is designed to extract and analyze package dependency infor
          │
          v
 ┌────────────────────────────────────────┐
-│      Package Analyzer                  │
+│      Capuchin                  │
 │  ┌──────────────────────────────────┐  │
 │  │  For each source package:        │  │
 │  │  1. Run monkey buildinfo         │  │
@@ -178,7 +178,7 @@ media_name:
 ```
 source_packages.json
         ↓
-    [PackageAnalyzer]
+    [Capuchin]
         ↓
     subprocess: monkey buildinfo
         ↓

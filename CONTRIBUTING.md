@@ -1,4 +1,4 @@
-# Contributing to Package Analyzer
+# Contributing to Capuchin
 
 Thank you for your interest in contributing! This document provides guidelines and instructions for development.
 
@@ -17,7 +17,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd package-analyzer
+cd capuchin
 ```
 
 2. Install dependencies:
@@ -212,7 +212,7 @@ The CI pipeline must pass before merging.
 ## Project Structure
 
 ```
-package-analyzer/
+capuchin/
 ├── src/               # Source code
 │   ├── models.py      # Data models
 │   ├── config.py      # Configuration

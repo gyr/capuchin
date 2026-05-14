@@ -3,7 +3,7 @@
 ## Project Structure
 
 ```
-package-analyzer/
+capuchin/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml            # CI/CD pipeline
@@ -264,7 +264,7 @@ def test_run_monkey_command(mock_run):
         returncode=0
     )
     
-    analyzer = PackageAnalyzer()
+    analyzer = Capuchin()
     result = analyzer.run_monkey_buildinfo("test-package")
     
     assert result == "mocked output"

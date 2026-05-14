@@ -1,6 +1,6 @@
-# Package Analyzer
+# Capuchin
 
-A Python tool to analyze source packages and their binary dependencies using the `monkey` CLI tool. This tool extracts information about binary packages, their reverse dependencies, and media inclusion details.
+A Python tool to analyze source packages and query binary dependencies using the `monkey` CLI tool. This tool extracts information about binary packages, their reverse dependencies, and media inclusion details.
 
 ## Features
 
@@ -9,7 +9,7 @@ A Python tool to analyze source packages and their binary dependencies using the
 - **Simplified Data Model**: Focus on essential information (package names, dependencies, media inclusion) - no metadata like versions, architectures, or epic classifications
 - **Progress Tracking**: Real-time progress bar showing completion percentage and ETA
 - **Comprehensive Logging**: Industry-standard logging with verbose/quiet modes and file output
-- **Query Tool**: Interactive query interface to explore package information
+- **Unified CLI**: Single entry point with `analyze` and `query` subcommands
 - **JSON Output**: Structured JSON output for downstream processing
 
 ## Requirements
@@ -17,13 +17,13 @@ A Python tool to analyze source packages and their binary dependencies using the
 - Python 3.12 or higher
 - [uv](https://github.com/astral-sh/uv) package manager
 - `monkey` CLI tool (package_monkey) - **must be pre-configured**
-- `jq` (for JSON validation)
+- `jq` (for JSON processing)
 
 ### Prerequisites Setup
 
 #### 1. package_monkey (monkey CLI tool)
 
-The `monkey` CLI tool must be installed and configured before using this analyzer.
+The `monkey` CLI tool must be installed and configured before using Capuchin.
 
 **Installation**: Refer to the package_monkey documentation for installation instructions.
 
@@ -41,7 +41,7 @@ cd /path/to/package_monkey
 
 #### 2. jq (JSON processor)
 
-Required for JSON validation and sorting.
+Required for JSON validation and processing.
 
 **Installation**:
 ```bash
@@ -67,7 +67,7 @@ jq --version
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd package-analyzer
+cd capuchin
 ```
 
 2. Install dependencies using uv:
@@ -77,15 +77,15 @@ uv sync
 
 ### For CLI Usage
 
-To install the package and enable CLI commands (`analyze-packages`, `query-package`):
+To install the package and enable the `capuchin` CLI command:
 
 ```bash
 uv pip install -e .
 ```
 
-This creates executable entry points in your environment. After installation, you can run:
-- `analyze-packages` instead of `python -m src.analyze_packages`
-- `query-package` instead of `python -m src.query_package`
+This creates an executable entry point in your environment. After installation, you can run:
+- `capuchin analyze` instead of `python -m src.commands.analyze`
+- `capuchin query` instead of `python -m src.commands.query`
 
 ## Configuration
 
@@ -97,6 +97,7 @@ This creates executable entry points in your environment. After installation, yo
 - Override by:
   1. Creating a `.env` file: `PACKAGE_MONKEY_PATH=/your/custom/path`
   2. Exporting in shell: `export PACKAGE_MONKEY_PATH=/your/custom/path`
+  3. Using `--monkey-path` flag: `capuchin analyze source.json --monkey-path /path`
 
 **Example `.env` file:**
 ```bash
@@ -111,45 +112,45 @@ There are two ways to run the tools:
 
 1. **Without installation** (for development/testing):
    ```bash
-   python -m src.analyze_packages source_packages.json
-   python -m src.query_package <package_name>
+   python -m src.commands.analyze source_packages.json
+   python -m src.commands.query <package_name>
    ```
 
 2. **After installation** (`uv pip install -e .`):
    ```bash
-   analyze-packages source_packages.json
-   query-package <package_name>
+   capuchin analyze source_packages.json
+   capuchin query <package_name>
    ```
 
-The following examples use the installed CLI commands. If you haven't installed the package, replace `analyze-packages` with `python -m src.analyze_packages` and `query-package` with `python -m src.query_package`.
+The following examples use the installed CLI command. If you haven't installed the package, use the `python -m` form shown above.
 
 ### 1. Analyze Source Packages
 
 Run the analysis tool to process source packages from a JSON file:
 
 ```bash
-analyze-packages source_packages.json
+capuchin analyze source_packages.json
 ```
 
 **With options:**
 ```bash
 # Specify custom output directory
-analyze-packages source_packages.json --output-dir ./output
+capuchin analyze source_packages.json --output-dir ./output
 
 # Override PACKAGE_MONKEY_PATH
-analyze-packages source_packages.json --monkey-path /custom/path/to/monkey
+capuchin analyze source_packages.json --monkey-path /custom/path/to/monkey
 
 # Verbose logging (shows DEBUG level logs including exact commands)
-analyze-packages source_packages.json --verbose
+capuchin analyze source_packages.json --verbose
 
 # Quiet mode (no progress bar or console output)
-analyze-packages source_packages.json --quiet
+capuchin analyze source_packages.json --quiet
 
 # Write logs to file
-analyze-packages source_packages.json --log-file analysis.log
+capuchin analyze source_packages.json --log-file analysis.log
 
 # Combined: verbose logs to file, quiet console, no progress bar
-analyze-packages source_packages.json --verbose --log-file debug.log --quiet
+capuchin analyze source_packages.json --verbose --log-file debug.log --quiet
 ```
 
 **What it does:**
@@ -168,14 +169,14 @@ analyze-packages source_packages.json --verbose --log-file debug.log --quiet
 Query information about a package (source or binary):
 
 ```bash
-query-package <package_name>
+capuchin query <package_name>
 ```
 
 The query tool searches first as a source package, then as a binary package across all sources.
 
 **Example - querying a source package:**
 ```bash
-query-package bash
+capuchin query bash
 ```
 
 **Output:**
@@ -194,7 +195,7 @@ Binary packages:
 
 **Example - querying a binary package:**
 ```bash
-query-package envsubst
+capuchin query envsubst
 ```
 
 **Output:**
@@ -208,7 +209,12 @@ Source package: gettext-runtime
 
 **JSON output:**
 ```bash
-query-package fwts --json | jq .
+capuchin query fwts --json | jq .
+```
+
+**With custom data directory:**
+```bash
+capuchin query bash --data-dir /path/to/output
 ```
 
 ### 3. Logging and Progress
@@ -234,7 +240,7 @@ To disable the progress bar, use the `--quiet` flag.
 
 **Verbose (DEBUG):**
 ```bash
-analyze-packages source_packages.json --verbose
+capuchin analyze source_packages.json --verbose
 ```
 - All INFO level logs
 - Exact `monkey` commands before execution
@@ -242,7 +248,7 @@ analyze-packages source_packages.json --verbose
 
 **Quiet:**
 ```bash
-analyze-packages source_packages.json --quiet
+capuchin analyze source_packages.json --quiet
 ```
 - No console output (progress bar and logs suppressed)
 - File logging still works if `--log-file` is specified
@@ -252,7 +258,7 @@ analyze-packages source_packages.json --quiet
 
 Write logs to a file for later analysis:
 ```bash
-analyze-packages source_packages.json --log-file analysis.log
+capuchin analyze source_packages.json --log-file analysis.log
 ```
 
 **File log features:**
@@ -263,13 +269,13 @@ analyze-packages source_packages.json --log-file analysis.log
 **Common patterns:**
 ```bash
 # Quiet console, detailed file logs
-analyze-packages source_packages.json --quiet --log-file analysis.log
+capuchin analyze source_packages.json --quiet --log-file analysis.log
 
 # Verbose console and file logs
-analyze-packages source_packages.json --verbose --log-file debug.log
+capuchin analyze source_packages.json --verbose --log-file debug.log
 
 # Debug to file only, no console clutter
-analyze-packages source_packages.json --verbose --quiet --log-file debug.log
+capuchin analyze source_packages.json --verbose --quiet --log-file debug.log
 ```
 
 ## Output Format
@@ -317,7 +323,21 @@ Hierarchical structure: source package → binary packages → package data
   - `included`: Boolean indicating if package appears in any media
   - `required_by_rpm`: List of RPM packages requiring this binary in media (empty if not included or no requirements)
 
+**Note:** Top-level keys match input source_packages.json exactly.
+
 ## Troubleshooting
+
+### Command not found: capuchin
+
+After installation, ensure your environment's bin directory is in PATH:
+```bash
+which capuchin
+```
+
+If not found, try:
+```bash
+uv pip install --force-reinstall -e .
+```
 
 ### Command not found: monkey
 

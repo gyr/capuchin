@@ -53,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Parse `monkey ex` output to extract media inclusion chains
 - Support for multiple inclusion paths (direct and rpm-based)
 - JSON validation and sorting
-- CLI tools: `analyze-packages` and `query-package`
+- Unified CLI tool: `capuchin analyze` and `capuchin query`
 
 ## [0.1.0] - TBD
 

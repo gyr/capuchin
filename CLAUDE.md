@@ -2,35 +2,16 @@
 
 Guide for Claude Code working this repo.
 
-## Project
-
-Package Analyzer - Python CLI analyze source packages + binary deps using external `monkey` CLI. Output structured JSON.
-
-## Dependencies
-
-**monkey CLI** (package_monkey) - External tool. Must pre-configure. Location: `PACKAGE_MONKEY_PATH` env var (default `/home/user/work/repos/monkey/package_monkey`). Execute `monkey buildinfo` + `monkey ex` via subprocess.
-
-**jq** - JSON processor. Install: `zypper install jq` or `apt-get install jq`
-
-## Setup
-
-```bash
-uv sync                    # Install deps, create .venv
-uv pip install -e .        # Install for CLI commands
-```
-
-Optional `.env`: `PACKAGE_MONKEY_PATH=/path/to/package_monkey`
-
 ## Testing
 
 ```bash
 uv run pytest                                          # All tests with coverage
-uv run pytest tests/test_package_analyzer.py           # Single file
-uv run pytest tests/test_package_analyzer.py::TestAnalyzePackages::test_analyze_multiple_packages
+uv run pytest tests/test_analyzer.py                   # Single file
+uv run pytest tests/test_analyzer.py::TestAnalyzePackages::test_analyze_multiple_packages
 uv run pytest -v --cov=src --cov-report=html           # Verbose + HTML report
 ```
 
-**Test Isolation:** Always mock `setup_logging()` in tests calling `main()` - pattern: `@patch("src.analyze_packages.setup_logging")`. Why: Logging global state persist across tests, break `caplog`.
+**Test Isolation:** Always mock `setup_logging()` in tests calling `analyze_main()` - pattern: `@patch("src.commands.analyze.setup_logging")`. Why: Logging global state persist across tests, break `caplog`.
 
 ## Code Quality
 
@@ -77,39 +58,22 @@ uv run pytest -v --cov=src --cov-report=term --cov-report=xml
 
 **Data Flow:**
 ```
-source_packages.json → analyze_packages.py → PackageAnalyzer → subprocess (monkey buildinfo/ex) → MonkeyParser → SourcePackageData/BinaryPackageData → packages.json
+source_packages.json → capuchin analyze → Capuchin → subprocess (monkey buildinfo/ex) → MonkeyParser → SourcePackageData/BinaryPackageData → packages.json
 ```
 
 **Components:**
-- `analyze_packages.py`: CLI entry, argparse (--output-dir, --monkey-path, --verbose, --quiet, --log-file), logging setup, Rich progress bar
-- `PackageAnalyzer` (package_analyzer.py): Main orchestration, subprocess execution, write packages.json
+- `cli.py`: Main CLI entry, argparse subparsers, routes to commands
+- `commands/analyze.py`: Analyze command, argparse (--output-dir, --monkey-path, --verbose, --quiet, --log-file), logging setup, Rich progress bar
+- `Capuchin` (analyzer.py): Main orchestration, subprocess execution, write packages.json
 - `MonkeyParser` (monkey_parser.py): Parse `monkey buildinfo` → BinaryPackage list, `monkey ex` → (included, required_by_rpm)
 - `models.py`: BinaryPackageData, SourcePackageData, to_dict() for JSON
-- `query_package.py`: CLI query, search packages.json (source first, then binary), human/JSON output
+- `commands/query.py`: Query command, search packages.json (source first, then binary), human/JSON output
 
 **Subprocess pattern:** `cwd=self.monkey_path`, `capture_output=True`, `check=True`, wrapped in try/except. **CRITICAL:** `monkey ex` output to stderr not stdout.
 
-## CLI
-
-```bash
-# Dev mode
-python -m src.analyze_packages source_packages.json
-python -m src.query_package bash
-
-# Installed
-analyze-packages source_packages.json --verbose --log-file debug.log
-query-package bash --json | jq .
-```
-
 ## Logging Patterns (Project-Specific)
 
-- **Long-running tools** (analyze-packages): logger ONLY (`logger.info/error/debug`), NO print (conflict --quiet)
-- **Query tools** (query-package): print to stdout (enable piping), logger.error for errors, keep stdout clean for `| jq`
+- **Long-running tools** (analyze): logger ONLY (`logger.info/error/debug`), NO print (conflict --quiet)
+- **Query tools** (query): print to stdout (enable piping), logger.error for errors, keep stdout clean for `| jq`
 
 Flags: `--verbose` (DEBUG), `--quiet` (suppress console), `--log-file PATH` (DEBUG to file)
-
-## Output
-
-packages.json structure: `{"source_package_name": {"binary_package_name": {"required_by": [], "included": bool, "required_by_rpm": []}}}`
-
-Top-level keys match input source_packages.json.
