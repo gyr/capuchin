@@ -1,7 +1,5 @@
 """Tests for CLI main entry point."""
 
-import argparse
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -28,15 +26,20 @@ class TestCLIParser:
 
     def test_analyze_subcommand_with_all_flags(self) -> None:
         """Test analyze subcommand with all flags."""
-        args = parse_args([
-            "analyze",
-            "input.json",
-            "--output-dir", "/tmp/output",
-            "--monkey-path", "/opt/monkey",
-            "--verbose",
-            "--quiet",
-            "--log-file", "debug.log"
-        ])
+        args = parse_args(
+            [
+                "analyze",
+                "input.json",
+                "--output-dir",
+                "/tmp/output",
+                "--monkey-path",
+                "/opt/monkey",
+                "--verbose",
+                "--quiet",
+                "--log-file",
+                "debug.log",
+            ]
+        )
         assert args.command == "analyze"
         assert args.source_packages_file == "input.json"
         assert args.output_dir == Path("/tmp/output")
@@ -73,12 +76,7 @@ class TestCLIParser:
 
     def test_query_subcommand_with_all_flags(self) -> None:
         """Test query subcommand with all flags."""
-        args = parse_args([
-            "query",
-            "bash",
-            "--data-dir", "/tmp/data",
-            "--json"
-        ])
+        args = parse_args(["query", "bash", "--data-dir", "/tmp/data", "--json"])
         assert args.command == "query"
         assert args.package_name == "bash"
         assert args.data_dir == Path("/tmp/data")
@@ -178,13 +176,19 @@ class TestCLIExecution:
         """Test that all analyze flags are passed through."""
         mock_analyze.return_value = 0
 
-        main([
-            "analyze", "input.json",
-            "--output-dir", "/tmp",
-            "--monkey-path", "/opt/monkey",
-            "--verbose",
-            "--log-file", "debug.log"
-        ])
+        main(
+            [
+                "analyze",
+                "input.json",
+                "--output-dir",
+                "/tmp",
+                "--monkey-path",
+                "/opt/monkey",
+                "--verbose",
+                "--log-file",
+                "debug.log",
+            ]
+        )
 
         call_args = mock_analyze.call_args[0][0]
         assert call_args.output_dir == Path("/tmp")
@@ -197,11 +201,7 @@ class TestCLIExecution:
         """Test that all query flags are passed through."""
         mock_query.return_value = 0
 
-        main([
-            "query", "bash",
-            "--data-dir", "/tmp",
-            "--json"
-        ])
+        main(["query", "bash", "--data-dir", "/tmp", "--json"])
 
         call_args = mock_query.call_args[0][0]
         assert call_args.data_dir == Path("/tmp")
