@@ -7,7 +7,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.query_package import format_human_readable, load_packages, main, parse_args, query_package
+from src.commands.query import (
+    format_human_readable,
+    load_packages,
+    parse_args,
+    query_main,
+    query_package,
+)
 
 
 class TestParseArgs:
@@ -225,7 +231,7 @@ class TestMain:
         return packages_file
 
     @patch("sys.argv", ["query_package", "bash", "--data-dir", "/tmp"])
-    @patch("src.query_package.load_packages")
+    @patch("src.commands.query.load_packages")
     def test_main_success_human_readable(self, mock_load: MagicMock) -> None:
         """Test successful query with human-readable output."""
         mock_load.return_value = {
@@ -238,13 +244,13 @@ class TestMain:
             }
         }
 
-        result = main()
+        result = query_main()
 
         assert result == 0
         mock_load.assert_called_once()
 
     @patch("sys.argv", ["query_package", "bash", "--data-dir", "/tmp", "--json"])
-    @patch("src.query_package.load_packages")
+    @patch("src.commands.query.load_packages")
     def test_main_success_json_output(self, mock_load: MagicMock) -> None:
         """Test successful query with JSON output."""
         mock_load.return_value = {
@@ -257,32 +263,32 @@ class TestMain:
             }
         }
 
-        result = main()
+        result = query_main()
 
         assert result == 0
 
     @patch("sys.argv", ["query_package", "bash"])
-    @patch("src.query_package.load_packages")
+    @patch("src.commands.query.load_packages")
     def test_main_file_not_found(self, mock_load: MagicMock) -> None:
         """Test when packages.json is not found."""
         mock_load.side_effect = FileNotFoundError("packages.json not found")
 
-        result = main()
+        result = query_main()
 
         assert result == 1
 
     @patch("sys.argv", ["query_package", "bash"])
-    @patch("src.query_package.load_packages")
+    @patch("src.commands.query.load_packages")
     def test_main_unexpected_error(self, mock_load: MagicMock) -> None:
         """Test handling of unexpected errors."""
         mock_load.side_effect = Exception("Unexpected error")
 
-        result = main()
+        result = query_main()
 
         assert result == 1
 
     @patch("sys.argv", ["query_package", "bash"])
-    @patch("src.query_package.load_packages")
+    @patch("src.commands.query.load_packages")
     def test_main_logs_file_not_found_error(
         self, mock_load: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -290,7 +296,7 @@ class TestMain:
         mock_load.side_effect = FileNotFoundError("packages.json not found in /tmp")
 
         with caplog.at_level(logging.ERROR):
-            result = main()
+            result = query_main()
 
         assert result == 1
         assert "packages.json not found in /tmp" in caplog.text
@@ -308,13 +314,13 @@ class TestMain:
             patch("sys.argv", ["query_package", "bash", "--data-dir", str(tmp_path)]),
             caplog.at_level(logging.ERROR),
         ):
-            result = main()
+            result = query_main()
 
         assert result == 1
         assert "Failed to parse packages.json" in caplog.text
 
     @patch("sys.argv", ["query_package", "bash"])
-    @patch("src.query_package.load_packages")
+    @patch("src.commands.query.load_packages")
     def test_main_logs_unexpected_error(
         self, mock_load: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -322,7 +328,7 @@ class TestMain:
         mock_load.side_effect = Exception("Something went wrong")
 
         with caplog.at_level(logging.ERROR):
-            result = main()
+            result = query_main()
 
         assert result == 1
         assert "Something went wrong" in caplog.text
