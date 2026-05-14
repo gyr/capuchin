@@ -99,7 +99,7 @@ class TestSetupLogging:
         setup_logging()
 
         # Get child logger
-        child_logger = logging.getLogger("src.package_analyzer")
+        child_logger = logging.getLogger("src.analyzer")
 
         with caplog.at_level(logging.INFO):
             child_logger.info("Test message from child")
