@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.analyze_packages import main, parse_args
+from src.commands.analyze import analyze_main, parse_args
 
 
 class TestParseArgs:
@@ -94,9 +94,9 @@ class TestMain:
             json.dump(data, f)
         return source_file
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Capuchin")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Capuchin")
+    @patch("src.commands.analyze.Config")
     def test_main_success(
         self,
         mock_config: MagicMock,
@@ -117,7 +117,7 @@ class TestMain:
             "argv",
             ["analyze_packages", str(sample_source_packages_file), "--output-dir", str(tmp_path)],
         ):
-            result = main()
+            result = analyze_main()
 
         # Verify
         assert result == 0
@@ -129,8 +129,8 @@ class TestMain:
             ["aaa_base", "bash", "coreutils"], show_progress=True
         )
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Config")
     def test_main_with_custom_monkey_path(
         self,
         mock_config: MagicMock,
@@ -139,7 +139,7 @@ class TestMain:
         tmp_path: Path,
     ) -> None:
         """Test main with custom monkey path (should not call Config)."""
-        with patch("src.analyze_packages.Capuchin") as mock_analyzer_class:
+        with patch("src.commands.analyze.Capuchin") as mock_analyzer_class:
             mock_analyzer = MagicMock()
             mock_analyzer_class.return_value = mock_analyzer
 
@@ -153,7 +153,7 @@ class TestMain:
                     "/custom/monkey",
                 ],
             ):
-                result = main()
+                result = analyze_main()
 
             # Config should NOT be called when monkey_path is provided
             mock_config.get_package_monkey_path.assert_not_called()
@@ -162,8 +162,8 @@ class TestMain:
             )
             assert result == 0
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Config")
     def test_main_file_not_found(
         self,
         mock_config: MagicMock,
@@ -179,13 +179,13 @@ class TestMain:
             patch.object(sys, "argv", ["analyze_packages", str(nonexistent)]),
             caplog.at_level(logging.ERROR),
         ):
-            result = main()
+            result = analyze_main()
 
         assert result == 1
         assert "Source packages file not found" in caplog.text
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Config")
     def test_main_invalid_json(
         self,
         mock_config: MagicMock,
@@ -202,13 +202,13 @@ class TestMain:
             patch.object(sys, "argv", ["analyze_packages", str(invalid_file)]),
             caplog.at_level(logging.ERROR),
         ):
-            result = main()
+            result = analyze_main()
 
         assert result == 1
         assert "Failed to parse source packages file" in caplog.text
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Config")
     def test_main_not_a_list(
         self,
         mock_config: MagicMock,
@@ -226,14 +226,14 @@ class TestMain:
             patch.object(sys, "argv", ["analyze_packages", str(invalid_file)]),
             caplog.at_level(logging.ERROR),
         ):
-            result = main()
+            result = analyze_main()
 
         assert result == 1
         assert "Source packages file must contain a JSON array" in caplog.text
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Capuchin")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Capuchin")
+    @patch("src.commands.analyze.Config")
     def test_main_config_error(
         self,
         mock_config: MagicMock,
@@ -249,14 +249,14 @@ class TestMain:
             patch.object(sys, "argv", ["analyze_packages", str(sample_source_packages_file)]),
             caplog.at_level(logging.ERROR),
         ):
-            result = main()
+            result = analyze_main()
 
         assert result == 1
         assert "PACKAGE_MONKEY_PATH not set" in caplog.text
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Capuchin")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Capuchin")
+    @patch("src.commands.analyze.Config")
     def test_main_analyzer_error(
         self,
         mock_config: MagicMock,
@@ -275,14 +275,14 @@ class TestMain:
             patch.object(sys, "argv", ["analyze_packages", str(sample_source_packages_file)]),
             caplog.at_level(logging.ERROR),
         ):
-            result = main()
+            result = analyze_main()
 
         assert result == 1
         assert "Failed to run monkey command" in caplog.text
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Capuchin")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Capuchin")
+    @patch("src.commands.analyze.Config")
     def test_main_empty_package_list(
         self,
         mock_config: MagicMock,
@@ -300,14 +300,14 @@ class TestMain:
             json.dump([], f)
 
         with patch.object(sys, "argv", ["analyze_packages", str(empty_file)]):
-            result = main()
+            result = analyze_main()
 
         assert result == 0
         mock_analyzer.analyze_and_write.assert_called_once_with([], show_progress=True)
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Capuchin")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Capuchin")
+    @patch("src.commands.analyze.Config")
     def test_main_calls_setup_logging_default(
         self,
         mock_config: MagicMock,
@@ -321,13 +321,13 @@ class TestMain:
         mock_analyzer_class.return_value = mock_analyzer
 
         with patch.object(sys, "argv", ["analyze_packages", str(sample_source_packages_file)]):
-            main()
+            analyze_main()
 
         mock_setup_logging.assert_called_once_with(verbose=False, log_file=None, quiet=False)
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Capuchin")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Capuchin")
+    @patch("src.commands.analyze.Config")
     def test_main_calls_setup_logging_verbose(
         self,
         mock_config: MagicMock,
@@ -343,13 +343,13 @@ class TestMain:
         with patch.object(
             sys, "argv", ["analyze_packages", str(sample_source_packages_file), "--verbose"]
         ):
-            main()
+            analyze_main()
 
         mock_setup_logging.assert_called_once_with(verbose=True, log_file=None, quiet=False)
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Capuchin")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Capuchin")
+    @patch("src.commands.analyze.Config")
     def test_main_calls_setup_logging_quiet(
         self,
         mock_config: MagicMock,
@@ -365,13 +365,13 @@ class TestMain:
         with patch.object(
             sys, "argv", ["analyze_packages", str(sample_source_packages_file), "--quiet"]
         ):
-            main()
+            analyze_main()
 
         mock_setup_logging.assert_called_once_with(verbose=False, log_file=None, quiet=True)
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Capuchin")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Capuchin")
+    @patch("src.commands.analyze.Config")
     def test_main_calls_setup_logging_with_log_file(
         self,
         mock_config: MagicMock,
@@ -396,12 +396,12 @@ class TestMain:
                 str(log_file),
             ],
         ):
-            main()
+            analyze_main()
 
         mock_setup_logging.assert_called_once_with(verbose=False, log_file=log_file, quiet=False)
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Config")
     def test_main_logs_error_on_file_not_found(
         self,
         mock_config: MagicMock,
@@ -415,13 +415,13 @@ class TestMain:
             patch.object(sys, "argv", ["analyze_packages", "nonexistent.json"]),
             caplog.at_level(logging.ERROR),
         ):
-            result = main()
+            result = analyze_main()
 
         assert result == 1
         assert "Source packages file not found" in caplog.text
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Config")
     def test_main_logs_error_on_invalid_json(
         self,
         mock_config: MagicMock,
@@ -440,14 +440,14 @@ class TestMain:
             patch.object(sys, "argv", ["analyze_packages", str(invalid_file)]),
             caplog.at_level(logging.ERROR),
         ):
-            result = main()
+            result = analyze_main()
 
         assert result == 1
         assert "Failed to parse source packages file" in caplog.text
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Capuchin")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Capuchin")
+    @patch("src.commands.analyze.Config")
     def test_main_progress_bar_enabled_by_default(
         self,
         mock_config: MagicMock,
@@ -461,16 +461,16 @@ class TestMain:
         mock_analyzer_class.return_value = mock_analyzer
 
         with patch.object(sys, "argv", ["analyze_packages", str(sample_source_packages_file)]):
-            main()
+            analyze_main()
 
         # Verify analyze_and_write was called with show_progress=True
         mock_analyzer.analyze_and_write.assert_called_once()
         call_args = mock_analyzer.analyze_and_write.call_args
         assert call_args[1]["show_progress"] is True
 
-    @patch("src.analyze_packages.setup_logging")
-    @patch("src.analyze_packages.Capuchin")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.setup_logging")
+    @patch("src.commands.analyze.Capuchin")
+    @patch("src.commands.analyze.Config")
     def test_main_quiet_disables_progress_bar(
         self,
         mock_config: MagicMock,
@@ -486,15 +486,15 @@ class TestMain:
         with patch.object(
             sys, "argv", ["analyze_packages", str(sample_source_packages_file), "--quiet"]
         ):
-            main()
+            analyze_main()
 
         # Verify analyze_and_write was called with show_progress=False
         mock_analyzer.analyze_and_write.assert_called_once()
         call_args = mock_analyzer.analyze_and_write.call_args
         assert call_args[1]["show_progress"] is False
 
-    @patch("src.analyze_packages.Capuchin")
-    @patch("src.analyze_packages.Config")
+    @patch("src.commands.analyze.Capuchin")
+    @patch("src.commands.analyze.Config")
     def test_main_logs_success_message(
         self,
         mock_config: MagicMock,
@@ -521,7 +521,7 @@ class TestMain:
             ),
             caplog.at_level(logging.INFO),
         ):
-            result = main()
+            result = analyze_main()
 
         assert result == 0
         assert "Analysis complete" in caplog.text
