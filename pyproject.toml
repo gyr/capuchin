@@ -1,7 +1,7 @@
 [project]
-name = "package-analyzer"
+name = "capuchin"
 version = "0.1.0"
-description = "Analyze source packages and their binary dependencies using monkey tool"
+description = "Analyze source packages and query binary dependencies using monkey tool"
 authors = [
     {name = "Your Name", email = "your.email@example.com"}
 ]
@@ -23,8 +23,7 @@ dev = [
 ]
 
 [project.scripts]
-analyze-packages = "src.analyze_packages:main"
-query-package = "src.query_package:main"
+capuchin = "src.cli:main"
 
 [build-system]
 requires = ["hatchling"]
